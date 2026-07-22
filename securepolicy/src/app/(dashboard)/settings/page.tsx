@@ -1,18 +1,20 @@
 "use client";
 import { useState, useEffect } from "react";
-import { User, Bell, Lock, AlertTriangle } from "lucide-react";
+import { User, Bell, Lock, AlertTriangle, Plug } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { createClient } from "@/lib/supabase/client";
+import { ConfluenceIntegrationConfig, NotionIntegrationConfig } from "@/types";
 import toast from "react-hot-toast";
 
-type Tab = "profile" | "notifications" | "password" | "danger";
+type Tab = "profile" | "notifications" | "password" | "integrations" | "danger";
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: "profile", label: "Profile", icon: <User size={16} /> },
   { key: "notifications", label: "Notifications", icon: <Bell size={16} /> },
   { key: "password", label: "Password", icon: <Lock size={16} /> },
+  { key: "integrations", label: "Integrations", icon: <Plug size={16} /> },
   { key: "danger", label: "Danger Zone", icon: <AlertTriangle size={16} /> },
 ];
 
@@ -26,6 +28,16 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [notionToken, setNotionToken] = useState("");
+  const [notionParentPageId, setNotionParentPageId] = useState("");
+  const [notionSaving, setNotionSaving] = useState(false);
+
+  const [confluenceBaseUrl, setConfluenceBaseUrl] = useState("");
+  const [confluenceEmail, setConfluenceEmail] = useState("");
+  const [confluenceApiToken, setConfluenceApiToken] = useState("");
+  const [confluenceSpaceKey, setConfluenceSpaceKey] = useState("");
+  const [confluenceSaving, setConfluenceSaving] = useState(false);
+
   useEffect(() => {
     async function load() {
       const supabase = createClient();
@@ -35,9 +47,64 @@ export default function SettingsPage() {
         setFirstName(user.user_metadata?.first_name || "");
         setLastName(user.user_metadata?.last_name || "");
       }
+
+      const { data: integrations } = await supabase.from("integrations").select("*");
+      integrations?.forEach((row) => {
+        if (row.provider === "notion") {
+          const cfg = row.config as NotionIntegrationConfig;
+          setNotionToken(cfg.token || "");
+          setNotionParentPageId(cfg.parentPageId || "");
+        }
+        if (row.provider === "confluence") {
+          const cfg = row.config as ConfluenceIntegrationConfig;
+          setConfluenceBaseUrl(cfg.baseUrl || "");
+          setConfluenceEmail(cfg.email || "");
+          setConfluenceApiToken(cfg.apiToken || "");
+          setConfluenceSpaceKey(cfg.spaceKey || "");
+        }
+      });
     }
     load();
   }, []);
+
+  async function handleSaveNotion() {
+    setNotionSaving(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("integrations").upsert(
+      {
+        user_id: user!.id,
+        provider: "notion",
+        config: { token: notionToken, parentPageId: notionParentPageId },
+      },
+      { onConflict: "user_id,provider" }
+    );
+    if (error) toast.error("Failed to save Notion settings.");
+    else toast.success("Notion connected.");
+    setNotionSaving(false);
+  }
+
+  async function handleSaveConfluence() {
+    setConfluenceSaving(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("integrations").upsert(
+      {
+        user_id: user!.id,
+        provider: "confluence",
+        config: {
+          baseUrl: confluenceBaseUrl,
+          email: confluenceEmail,
+          apiToken: confluenceApiToken,
+          spaceKey: confluenceSpaceKey,
+        },
+      },
+      { onConflict: "user_id,provider" }
+    );
+    if (error) toast.error("Failed to save Confluence settings.");
+    else toast.success("Confluence connected.");
+    setConfluenceSaving(false);
+  }
 
   async function handleSaveProfile() {
     setLoading(true);
@@ -197,6 +264,83 @@ export default function SettingsPage() {
                 </div>
               </div>
             </Card>
+          )}
+
+          {tab === "integrations" && (
+            <div className="flex flex-col gap-6">
+              <Card>
+                <h2 className="font-semibold text-gray-900 mb-1">Notion</h2>
+                <p className="text-xs text-gray-500 mb-4">
+                  Create an integration at{" "}
+                  <span className="font-medium text-gray-700">notion.so/my-integrations</span>, share your
+                  destination page with it, then paste the token and that page&apos;s ID below. Exported policies
+                  will be created as sub-pages under it.
+                </p>
+                <div className="flex flex-col gap-4">
+                  <Input
+                    label="Internal Integration Token"
+                    type="password"
+                    value={notionToken}
+                    onChange={(e) => setNotionToken(e.target.value)}
+                    placeholder="secret_..."
+                  />
+                  <Input
+                    label="Parent Page ID"
+                    value={notionParentPageId}
+                    onChange={(e) => setNotionParentPageId(e.target.value)}
+                    placeholder="e.g. 1a2b3c4d5e6f..."
+                    hint="The 32-character ID at the end of your Notion page URL."
+                  />
+                  <div className="flex justify-end pt-2">
+                    <Button onClick={handleSaveNotion} loading={notionSaving}>
+                      Save Notion Settings
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              <Card>
+                <h2 className="font-semibold text-gray-900 mb-1">Confluence</h2>
+                <p className="text-xs text-gray-500 mb-4">
+                  Generate an API token at{" "}
+                  <span className="font-medium text-gray-700">id.atlassian.com/manage-profile/security/api-tokens</span>.
+                  Exported policies will be created as pages in the space below.
+                </p>
+                <div className="flex flex-col gap-4">
+                  <Input
+                    label="Site URL"
+                    value={confluenceBaseUrl}
+                    onChange={(e) => setConfluenceBaseUrl(e.target.value)}
+                    placeholder="https://yourcompany.atlassian.net"
+                  />
+                  <Input
+                    label="Account Email"
+                    type="email"
+                    value={confluenceEmail}
+                    onChange={(e) => setConfluenceEmail(e.target.value)}
+                    placeholder="you@yourcompany.com"
+                  />
+                  <Input
+                    label="API Token"
+                    type="password"
+                    value={confluenceApiToken}
+                    onChange={(e) => setConfluenceApiToken(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                  <Input
+                    label="Space Key"
+                    value={confluenceSpaceKey}
+                    onChange={(e) => setConfluenceSpaceKey(e.target.value)}
+                    placeholder="e.g. SEC"
+                  />
+                  <div className="flex justify-end pt-2">
+                    <Button onClick={handleSaveConfluence} loading={confluenceSaving}>
+                      Save Confluence Settings
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
           )}
 
           {tab === "danger" && (

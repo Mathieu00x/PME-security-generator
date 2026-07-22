@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Shield, FileText, TrendingUp, Clock, CheckCircle } from "lucide-react";
+import { Shield, FileText, TrendingUp, Download, CheckCircle, Check, Radar, BarChart3, AlertCircle, AlertTriangle } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { LangSwitcher } from "@/components/ui/LangSwitcher";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -43,7 +43,10 @@ export default function LandingPage() {
           {t("hero.title2")}{" "}
           <span className="text-blue-600">{t("hero.title3")}</span>
         </h1>
-        <p className="text-lg text-gray-500 max-w-xl mx-auto mb-10">
+        <p className="text-xl font-semibold text-blue-600 tracking-tight mb-4">
+          {t("hero.tagline")}
+        </p>
+        <p className="text-lg text-gray-500 max-w-2xl mx-auto mb-10">
           {t("hero.subtitle")}
         </p>
 
@@ -71,22 +74,43 @@ export default function LandingPage() {
           <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-green-500" /> {t("hero.badge3")}</span>
         </div>
 
-        {/* Preview card */}
+        {/* Preview card — scan result */}
         <div className="max-w-sm mx-auto bg-white rounded-2xl border border-gray-100 shadow-xl p-6 text-left">
-          <div className="flex items-center gap-2 mb-3">
-            <FileText size={16} className="text-blue-600" />
-            <span className="text-sm font-semibold text-gray-900">Password Policy</span>
-          </div>
-          <div className="h-2 bg-gray-100 rounded-full mb-1.5"><div className="h-full bg-gray-200 rounded-full w-3/4" /></div>
-          <div className="h-2 bg-gray-100 rounded-full mb-1.5"><div className="h-full bg-gray-200 rounded-full w-1/2" /></div>
-          <div className="h-2 bg-gray-100 rounded-full mb-4"><div className="h-full bg-gray-200 rounded-full w-5/6" /></div>
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-            <span className="text-xs text-gray-400">Security Score</span>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-600 rounded-full" style={{ width: "82%" }} />
-              </div>
-              <span className="text-xs font-bold text-gray-900">82 / 100</span>
+              <Radar size={15} className="text-blue-600" />
+              <span className="text-sm font-semibold text-gray-900">{t("hero.preview.domain")}</span>
+            </div>
+            <span className="text-xs bg-orange-50 text-orange-600 font-semibold px-2 py-0.5 rounded-full">
+              {t("hero.preview.risk")}
+            </span>
+          </div>
+
+          {/* Score bar */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-gray-400">{t("hero.preview.score")}</span>
+              <span className="text-xs font-bold text-gray-900">68 / 100</span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full rounded-full bg-orange-400" style={{ width: "68%" }} />
+            </div>
+          </div>
+
+          {/* Findings */}
+          <div className="flex flex-col gap-2 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-2 text-xs">
+              <AlertCircle size={13} className="text-red-500 flex-shrink-0" />
+              <span className="text-gray-700">{t("hero.preview.finding1")}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <AlertTriangle size={13} className="text-orange-400 flex-shrink-0" />
+              <span className="text-gray-700">{t("hero.preview.finding2")}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <CheckCircle size={13} className="text-green-500 flex-shrink-0" />
+              <span className="text-gray-700">{t("hero.preview.finding3")}</span>
             </div>
           </div>
         </div>
@@ -106,23 +130,52 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How it works */}
+      {/* How it works — 4 steps */}
       <section id="how-it-works" className="py-24 px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">{t("how.title")}</h2>
           <p className="text-gray-500 mb-16">{t("how.subtitle")}</p>
-          <div className="grid grid-cols-3 gap-8">
+
+          <div className="grid grid-cols-2 gap-8">
             {[
-              { icon: <Shield size={28} className="text-blue-600" />, titleKey: "how.step1.title", descKey: "how.step1.desc" },
-              { icon: <FileText size={28} className="text-blue-600" />, titleKey: "how.step2.title", descKey: "how.step2.desc" },
-              { icon: <TrendingUp size={28} className="text-blue-600" />, titleKey: "how.step3.title", descKey: "how.step3.desc" },
-            ].map(({ icon, titleKey, descKey }) => (
-              <div key={titleKey} className="flex flex-col items-center gap-4">
-                <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center">
-                  {icon}
+              {
+                num: "1",
+                icon: <Radar size={26} className="text-blue-600" />,
+                titleKey: "how.step1.title",
+                descKey: "how.step1.desc",
+              },
+              {
+                num: "2",
+                icon: <BarChart3 size={26} className="text-blue-600" />,
+                titleKey: "how.step2.title",
+                descKey: "how.step2.desc",
+              },
+              {
+                num: "3",
+                icon: <FileText size={26} className="text-blue-600" />,
+                titleKey: "how.step3.title",
+                descKey: "how.step3.desc",
+              },
+              {
+                num: "4",
+                icon: <Download size={26} className="text-blue-600" />,
+                titleKey: "how.step4.title",
+                descKey: "how.step4.desc",
+              },
+            ].map(({ num, icon, titleKey, descKey }) => (
+              <div key={titleKey} className="flex items-start gap-4 text-left bg-gray-50 rounded-2xl p-6">
+                <div className="relative flex-shrink-0">
+                  <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center">
+                    {icon}
+                  </div>
+                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {num}
+                  </span>
                 </div>
-                <h3 className="font-semibold text-gray-900">{t(titleKey)}</h3>
-                <p className="text-sm text-gray-500">{t(descKey)}</p>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">{t(titleKey)}</h3>
+                  <p className="text-sm text-gray-500">{t(descKey)}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -148,8 +201,80 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Pricing */}
+      <section id="pricing" className="py-24 px-8">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-gray-900 text-center mb-2">{t("pricing.title")}</h2>
+          <p className="text-gray-500 text-center mb-14">{t("pricing.subtitle")}</p>
+
+          <div className="grid grid-cols-2 gap-6">
+            {/* Consultant */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 flex flex-col">
+              <div className="mb-6">
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">{t("pricing.consultant.name")}</p>
+                <div className="flex items-end gap-1 mb-2">
+                  <span className="text-4xl font-extrabold text-gray-900">{t("pricing.consultant.price")}</span>
+                  <span className="text-gray-400 mb-1">{t("pricing.consultant.period")}</span>
+                </div>
+                <p className="text-sm text-gray-500">{t("pricing.consultant.desc")}</p>
+              </div>
+
+              <ul className="flex flex-col gap-3 mb-8 flex-1">
+                {(["f1","f2","f3","f4","f5","f6"] as const).map((f) => (
+                  <li key={f} className="flex items-center gap-2.5 text-sm text-gray-700">
+                    <Check size={15} className="text-blue-600 flex-shrink-0" />
+                    {t(`pricing.consultant.${f}`)}
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                href="/register"
+                className="block text-center px-6 py-3 border-2 border-blue-600 text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-colors"
+              >
+                {t("pricing.consultant.cta")}
+              </Link>
+            </div>
+
+            {/* Agency */}
+            <div className="bg-blue-600 rounded-2xl p-8 flex flex-col relative overflow-hidden">
+              <div className="absolute top-4 right-4">
+                <span className="text-xs font-bold bg-white text-blue-600 px-2.5 py-1 rounded-full">
+                  {t("pricing.agency.badge")}
+                </span>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-sm font-semibold text-blue-200 uppercase tracking-wide mb-1">{t("pricing.agency.name")}</p>
+                <div className="flex items-end gap-1 mb-2">
+                  <span className="text-4xl font-extrabold text-white">{t("pricing.agency.price")}</span>
+                  <span className="text-blue-200 mb-1">{t("pricing.agency.period")}</span>
+                </div>
+                <p className="text-sm text-blue-100">{t("pricing.agency.desc")}</p>
+              </div>
+
+              <ul className="flex flex-col gap-3 mb-8 flex-1">
+                {(["f1","f2","f3","f4","f5","f6"] as const).map((f) => (
+                  <li key={f} className="flex items-center gap-2.5 text-sm text-white">
+                    <Check size={15} className="text-blue-200 flex-shrink-0" />
+                    {t(`pricing.agency.${f}`)}
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                href="/register"
+                className="block text-center px-6 py-3 bg-white text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-colors"
+              >
+                {t("pricing.agency.cta")}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
-      <section id="pricing" className="py-24 px-8 text-center">
+      <section className="py-24 px-8 text-center bg-gray-50">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl font-bold text-gray-900 mb-3">{t("cta.title")}</h2>
           <p className="text-gray-500 mb-8">{t("cta.subtitle")}</p>
@@ -157,7 +282,7 @@ export default function LandingPage() {
             href="/register"
             className="inline-flex items-center gap-2 px-10 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 text-lg"
           >
-            <Clock size={20} />
+            <Radar size={20} />
             {t("cta.button")}
           </Link>
         </div>

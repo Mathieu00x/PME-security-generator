@@ -1,16 +1,24 @@
 "use client";
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
-import { Policy } from "@/types";
+import { Policy, Branding } from "@/types";
+import { COMPLIANCE_STANDARD_LABELS } from "@/lib/complianceLabels";
+import { ARTIFACT_DEFINITIONS } from "@/lib/artifacts";
+import { resolveBranding, hexToRgb } from "@/lib/branding";
 
 interface Props {
   policy: Policy;
   companyName?: string;
+  branding?: Branding;
   iconOnly?: boolean;
 }
 
-export function DownloadPDFButton({ policy, companyName = "Your Company", iconOnly = false }: Props) {
+export function DownloadPDFButton({ policy, companyName = "Your Company", branding, iconOnly = false }: Props) {
   const [loading, setLoading] = useState(false);
+  const brand = branding || resolveBranding(null);
+  const [brR, brG, brB] = hexToRgb(brand.color);
+  const brandInitials = brand.name.slice(0, 2).toUpperCase();
+  const brandNameShort = brand.name.length > 22 ? `${brand.name.slice(0, 21)}…` : brand.name;
 
   async function handleDownload() {
     setLoading(true);
@@ -27,28 +35,26 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", iconOn
 
       let y = marginT;
 
-      function checkPageBreak(needed = 10) {
+      const checkPageBreak = (needed = 10) => {
         if (y + needed > pageH - 20) {
           doc.addPage();
           y = marginT;
           drawHeader();
         }
-      }
+      };
 
-      function drawHeader() {
-        doc.setFillColor(37, 99, 235);
+      const drawHeader = () => {
+        doc.setFillColor(brR, brG, brB);
         doc.roundedRect(marginL, 8, 8, 8, 1.5, 1.5, "F");
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(6);
         doc.setFont("helvetica", "bold");
-        doc.text("SP", marginL + 4, 13.5, { align: "center" });
+        doc.text(brandInitials, marginL + 4, 13.5, { align: "center" });
 
         doc.setTextColor(15, 23, 42);
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
-        doc.text("Secure", marginL + 10, 13);
-        doc.setTextColor(37, 99, 235);
-        doc.text("Policy", marginL + 24, 13);
+        doc.text(brandNameShort, marginL + 10, 13);
 
         doc.setTextColor(148, 163, 184);
         doc.setFontSize(8);
@@ -61,18 +67,19 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", iconOn
       }
 
       // ── Cover page ────────────────────────────────────────────────────
-      doc.setFillColor(37, 99, 235);
+      doc.setFillColor(brR, brG, brB);
       doc.rect(0, 0, pageW, 60, "F");
 
-      doc.setFillColor(59, 130, 246);
+      doc.setFillColor(255, 255, 255);
       doc.roundedRect(marginL, 15, 14, 14, 2.5, 2.5, "F");
-      doc.setTextColor(255, 255, 255);
+      doc.setTextColor(brR, brG, brB);
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
-      doc.text("SP", marginL + 7, 24, { align: "center" });
+      doc.text(brandInitials, marginL + 7, 24, { align: "center" });
 
+      doc.setTextColor(255, 255, 255);
       doc.setFontSize(14);
-      doc.text("SecurePolicy", marginL + 18, 20);
+      doc.text(brand.name, marginL + 18, 20);
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(191, 219, 254);
@@ -167,6 +174,27 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", iconOn
         }
       }
 
+      // Executive summary on cover
+      const execSummary = policy.security_score?.executiveSummary;
+      if (execSummary) {
+        y += 4;
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(100, 116, 139);
+        doc.text("EXECUTIVE SUMMARY", marginL, y);
+        y += 6;
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        const summaryLines = doc.splitTextToSize(execSummary, contentW - 10);
+        const boxH = summaryLines.length * 5 + 8;
+        doc.roundedRect(marginL, y - 4, contentW, boxH, 2, 2, "FD");
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(51, 65, 85);
+        doc.text(summaryLines, marginL + 5, y + 2);
+        y += boxH;
+      }
+
       // ── Policy content ────────────────────────────────────────────────
       doc.addPage();
       drawHeader();
@@ -187,7 +215,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", iconOn
         if (/^#{1}\s/.test(line) || /^\d+\s+[A-Z]/.test(line)) {
           checkPageBreak(14);
           y += 4;
-          doc.setFillColor(37, 99, 235);
+          doc.setFillColor(brR, brG, brB);
           doc.rect(marginL, y - 4, 3, 9, "F");
           doc.setFontSize(12);
           doc.setFont("helvetica", "bold");
@@ -203,7 +231,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", iconOn
           y += 2;
           doc.setFontSize(10);
           doc.setFont("helvetica", "bold");
-          doc.setTextColor(37, 99, 235);
+          doc.setTextColor(brR, brG, brB);
           doc.text(line.replace(/^#+\s/, ""), marginL, y);
           y += 7;
           inList = false;
@@ -228,7 +256,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", iconOn
           doc.setTextColor(51, 65, 85);
           const bulletText = line.replace(/^[•\-\*]\s/, "");
           const wrapped = doc.splitTextToSize(bulletText, contentW - 8);
-          doc.setFillColor(37, 99, 235);
+          doc.setFillColor(brR, brG, brB);
           doc.circle(marginL + 2, y - 1.5, 1, "F");
           doc.text(wrapped, marginL + 6, y);
           y += wrapped.length * 5 + 1;
@@ -246,6 +274,201 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", iconOn
         inList = false;
       }
 
+      // ── Compliance Mapping page ───────────────────────────────────────
+      const fullMapping = policy.security_score?.complianceMapping;
+      if (fullMapping) {
+        const entries = Object.entries(fullMapping).filter(([, codes]) => codes && codes.length);
+
+        if (entries.length) {
+          doc.addPage();
+          drawHeader();
+          y = 28;
+
+          doc.setFillColor(brR, brG, brB);
+          doc.rect(marginL, y - 4, 3, 9, "F");
+          doc.setFontSize(12);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(15, 23, 42);
+          doc.text("Mapping aux normes", marginL + 6, y + 2);
+          y += 14;
+
+          entries.forEach(([key, codes]) => {
+            checkPageBreak(10);
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(brR, brG, brB);
+            doc.text(COMPLIANCE_STANDARD_LABELS[key] || key, marginL, y);
+            y += 6;
+
+            (codes as string[]).forEach((code) => {
+              checkPageBreak(6);
+              doc.setFillColor(brR, brG, brB);
+              doc.circle(marginL + 2, y - 1.5, 1, "F");
+              doc.setFontSize(8);
+              doc.setFont("helvetica", "normal");
+              doc.setTextColor(51, 65, 85);
+              const wrapped = doc.splitTextToSize(code, contentW - 8);
+              doc.text(wrapped, marginL + 6, y);
+              y += wrapped.length * 5 + 1;
+            });
+            y += 4;
+          });
+        }
+      }
+
+      // ── Gap Analysis page ─────────────────────────────────────────────
+      const gap = policy.security_score?.gapAnalysis;
+      if (gap) {
+        doc.addPage();
+        drawHeader();
+        y = 28;
+
+        doc.setFillColor(brR, brG, brB);
+        doc.rect(marginL, y - 4, 3, 9, "F");
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(15, 23, 42);
+        doc.text("Analyse des écarts (Gap Analysis)", marginL + 6, y + 2);
+        y += 16;
+
+        const stats = [
+          { label: "Conformité actuelle", value: `${gap.compliancePercentage}%` },
+          { label: "Contrôles manquants", value: `${gap.missingControlsCount}` },
+          { label: "Risque associé", value: gap.associatedRisk },
+        ];
+        const statW = contentW / 3;
+        stats.forEach((s, i) => {
+          const x = marginL + i * statW;
+          doc.setFontSize(7);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(100, 116, 139);
+          doc.text(s.label.toUpperCase(), x, y);
+          doc.setFontSize(16);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(
+            s.label === "Risque associé"
+              ? (gap.associatedRisk === "High" ? 239 : gap.associatedRisk === "Medium" ? 245 : 34)
+              : 15,
+            s.label === "Risque associé"
+              ? (gap.associatedRisk === "High" ? 68 : gap.associatedRisk === "Medium" ? 158 : 197)
+              : 23,
+            s.label === "Risque associé"
+              ? (gap.associatedRisk === "High" ? 68 : gap.associatedRisk === "Medium" ? 11 : 94)
+              : 42
+          );
+          doc.text(s.value, x, y + 9);
+        });
+        y += 22;
+
+        if (gap.missingControls.length) {
+          doc.setDrawColor(226, 232, 240);
+          doc.setLineWidth(0.3);
+          doc.line(marginL, y, pageW - marginR, y);
+          y += 8;
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(15, 23, 42);
+          doc.text("Contrôles manquants", marginL, y);
+          y += 7;
+
+          gap.missingControls.forEach((mc) => {
+            checkPageBreak(6);
+            doc.setFillColor(239, 68, 68);
+            doc.circle(marginL + 2, y - 1.5, 1, "F");
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 65, 85);
+            const wrapped = doc.splitTextToSize(mc, contentW - 8);
+            doc.text(wrapped, marginL + 6, y);
+            y += wrapped.length * 5 + 1;
+          });
+        }
+      }
+
+      // ── Audit Evidence page ───────────────────────────────────────────
+      const auditEvidence = policy.security_score?.auditEvidence;
+      if (auditEvidence && auditEvidence.length) {
+        doc.addPage();
+        drawHeader();
+        y = 28;
+
+        doc.setFillColor(brR, brG, brB);
+        doc.rect(marginL, y - 4, 3, 9, "F");
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(15, 23, 42);
+        doc.text("Audit Evidence", marginL + 6, y + 2);
+        y += 8;
+
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+        doc.text("Registers you should maintain to demonstrate compliance with this policy.", marginL, y);
+        y += 10;
+
+        auditEvidence.forEach((evidence) => {
+          checkPageBreak(16);
+          doc.setFillColor(248, 250, 252);
+          doc.setDrawColor(226, 232, 240);
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(brR, brG, brB);
+          doc.text(ARTIFACT_DEFINITIONS[evidence.type]?.title || evidence.type, marginL, y);
+          y += 5;
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(51, 65, 85);
+          const wrapped = doc.splitTextToSize(evidence.reason, contentW);
+          doc.text(wrapped, marginL, y);
+          y += wrapped.length * 5 + 6;
+        });
+      }
+
+      // ── Prioritized Recommendations page ──────────────────────────────
+      const recommendations = policy.security_score?.recommendations;
+      if (recommendations && recommendations.length) {
+        doc.addPage();
+        drawHeader();
+        y = 28;
+
+        doc.setFillColor(brR, brG, brB);
+        doc.rect(marginL, y - 4, 3, 9, "F");
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(15, 23, 42);
+        doc.text("Recommandations priorisées", marginL + 6, y + 2);
+        y += 14;
+
+        const REC_PRIORITY_COLORS: Record<string, [number, number, number]> = {
+          high: [239, 68, 68],
+          medium: [245, 158, 11],
+          low: [59, 130, 246],
+        };
+        const REC_PRIORITY_LABELS: Record<string, string> = {
+          high: "HAUTE",
+          medium: "MOYENNE",
+          low: "FAIBLE",
+        };
+
+        recommendations.forEach((rec) => {
+          checkPageBreak(12);
+          const pc = REC_PRIORITY_COLORS[rec.priority] || [100, 116, 139];
+          doc.setFillColor(pc[0], pc[1], pc[2]);
+          doc.roundedRect(marginL, y - 3, 16, 4, 1, 1, "F");
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(5);
+          doc.setFont("helvetica", "bold");
+          doc.text(REC_PRIORITY_LABELS[rec.priority] || rec.priority.toUpperCase(), marginL + 8, y, { align: "center" });
+
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(15, 23, 42);
+          const wrapped = doc.splitTextToSize(rec.text, contentW - 20);
+          doc.text(wrapped, marginL + 20, y);
+          y += Math.max(wrapped.length * 5, 5) + 5;
+        });
+      }
+
       // ── Best Practices page ───────────────────────────────────────────
       const bp = policy.security_score?.bestPractices;
       if (bp && (bp.dos.length || bp.donts.length)) {
@@ -254,7 +477,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", iconOn
         y = 28;
 
         // Section title
-        doc.setFillColor(37, 99, 235);
+        doc.setFillColor(brR, brG, brB);
         doc.rect(marginL, y - 4, 3, 9, "F");
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
@@ -323,7 +546,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", iconOn
         drawHeader();
         y = 28;
 
-        doc.setFillColor(37, 99, 235);
+        doc.setFillColor(brR, brG, brB);
         doc.rect(marginL, y - 4, 3, 9, "F");
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
@@ -369,7 +592,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", iconOn
           // Tool
           if (item.tool) {
             doc.setFontSize(7);
-            doc.setTextColor(37, 99, 235);
+            doc.setTextColor(brR, brG, brB);
             doc.text(`→ ${item.tool}`, marginL + 24, y + 1);
             y += 5;
           }

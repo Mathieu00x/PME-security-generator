@@ -1,9 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { FileText, TrendingUp, Lightbulb, Download, MoreHorizontal, Plus } from "lucide-react";
+import { FileText, TrendingUp, Lightbulb, Download, MoreHorizontal, Plus, AlertTriangle, Radar, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Policy } from "@/types";
+import { Framework, Policy } from "@/types";
+import { PRIORITY_ORDER, normalizeRecommendation } from "@/lib/securityScore";
 
 const STATUS_COLORS: Record<string, string> = {
   completed: "bg-green-100 text-green-700",
@@ -28,6 +29,21 @@ export default async function DashboardPage() {
     .eq("user_id", user!.id)
     .single();
 
+  const [{ data: frameworkRows }, { data: allPolicyVersions }, { count: scanCount }] = await Promise.all([
+    supabase.from("frameworks").select("*"),
+    supabase.from("policies").select("id, framework_versions").eq("user_id", user!.id),
+    supabase.from("attack_surface_reports").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
+  ]);
+
+  const currentVersionByKey: Record<string, string> = {};
+  (frameworkRows as Framework[] || []).forEach((f) => { currentVersionByKey[f.id] = f.current_version; });
+
+  const outdatedPolicyCount = (allPolicyVersions || []).filter((p) =>
+    Object.entries(p.framework_versions || {}).some(
+      ([key, oldVersion]) => currentVersionByKey[key] && currentVersionByKey[key] !== oldVersion
+    )
+  ).length;
+
   const firstName = user?.user_metadata?.first_name || user?.email?.split("@")[0] || "there";
 
   // Get latest security score from most recent policy
@@ -35,6 +51,28 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
+      {!scanCount && (
+        <Link
+          href="/scan"
+          className="mb-6 flex items-center justify-between gap-4 px-6 py-5 bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl shadow-lg shadow-blue-200 hover:shadow-xl transition-shadow"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 bg-white/15 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Radar size={22} className="text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-white">Diagnostic de sécurité</p>
+              <p className="text-sm text-blue-100 mt-0.5">
+                Analysez la surface d&apos;attaque de votre domaine en 30 secondes.
+              </p>
+            </div>
+          </div>
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-white flex-shrink-0 whitespace-nowrap">
+            Lancer le scan <ArrowRight size={15} />
+          </span>
+        </Link>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -171,12 +209,16 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <div className="p-6 flex flex-col gap-3">
-              {latestScore.recommendations.slice(0, 4).map((rec, i) => (
+              {latestScore.recommendations
+                .map(normalizeRecommendation)
+                .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority])
+                .slice(0, 4)
+                .map((rec, i) => (
                 <div key={i} className="flex items-start gap-2.5">
                   <div className="w-5 h-5 bg-amber-50 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Lightbulb size={11} className="text-amber-500" />
                   </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">{rec}</p>
+                  <p className="text-xs text-gray-600 leading-relaxed">{rec.text}</p>
                 </div>
               ))}
               <Link href="/security-score" className="text-xs text-blue-600 hover:underline mt-1">
@@ -186,6 +228,25 @@ export default async function DashboardPage() {
           )}
         </Card>
       </div>
+
+      {outdatedPolicyCount > 0 && (
+        <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-900">
+                {outdatedPolicyCount} {outdatedPolicyCount === 1 ? "policy needs" : "policies need"} a review
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                A framework you&apos;re aligned with was updated since generation. Review the affected policies.
+              </p>
+            </div>
+          </div>
+          <Link href="/frameworks">
+            <Button size="sm" variant="secondary">Review now →</Button>
+          </Link>
+        </div>
+      )}
 
       {!profile && (
         <div className="mt-4 bg-blue-50 border border-blue-100 rounded-xl px-5 py-4 flex items-center justify-between">

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Building2, Shield } from "lucide-react";
+import { Building2, Shield, Palette } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -43,7 +43,7 @@ const CLOUD_SERVICES = [
   { value: "mixed", label: "Mixed / Multiple" },
 ];
 
-type Tab = "company" | "security";
+type Tab = "company" | "security" | "branding";
 
 export default function CompanyProfilePage() {
   const [tab, setTab] = useState<Tab>("company");
@@ -66,6 +66,9 @@ export default function CompanyProfilePage() {
     has_backups: false,
     has_it_department: false,
     uses_personal_devices: false,
+    brand_name: "",
+    brand_color: "#2563EB",
+    brand_logo_url: "",
   });
 
   useEffect(() => {
@@ -77,7 +80,7 @@ export default function CompanyProfilePage() {
         .select("*")
         .eq("user_id", user!.id)
         .single();
-      if (data) setProfile(data);
+      if (data) setProfile((prev) => ({ ...prev, ...data, brand_color: data.brand_color || prev.brand_color }));
       setFetching(false);
     }
     loadProfile();
@@ -135,7 +138,7 @@ export default function CompanyProfilePage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-6 w-fit">
-        {(["company", "security"] as Tab[]).map((t) => (
+        {(["company", "security", "branding"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -143,8 +146,10 @@ export default function CompanyProfilePage() {
               tab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            {t === "company" ? <Building2 size={15} /> : <Shield size={15} />}
-            {t === "company" ? "Company Information" : "Security Information"}
+            {t === "company" && <Building2 size={15} />}
+            {t === "security" && <Shield size={15} />}
+            {t === "branding" && <Palette size={15} />}
+            {t === "company" ? "Company Information" : t === "security" ? "Security Information" : "Branding"}
           </button>
         ))}
       </div>
@@ -215,7 +220,7 @@ export default function CompanyProfilePage() {
               />
             </div>
           </div>
-        ) : (
+        ) : tab === "security" ? (
           <div className="flex flex-col">
             <Select
               label="Cloud Services"
@@ -239,6 +244,50 @@ export default function CompanyProfilePage() {
             <Toggle field="has_backups" label="Backups in place" />
             <Toggle field="has_it_department" label="IT Department / External MSP" />
             <Toggle field="uses_personal_devices" label="Employees use personal devices" />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <p className="text-xs text-gray-500 -mt-1">
+              White-label your exported policies with your own agency branding instead of SecurePilot&apos;s (Agency plan).
+            </p>
+            <Input
+              label="Brand Name"
+              placeholder="Bluewave Security Consulting"
+              hint="Shown on PDF and Word cover pages instead of SecurePilot's default branding."
+              value={profile.brand_name || ""}
+              onChange={(e) => setProfile((p) => ({ ...p, brand_name: e.target.value }))}
+            />
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Primary Color</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={profile.brand_color || "#2563EB"}
+                  onChange={(e) => setProfile((p) => ({ ...p, brand_color: e.target.value }))}
+                  className="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer"
+                />
+                <Input
+                  value={profile.brand_color || "#2563EB"}
+                  onChange={(e) => setProfile((p) => ({ ...p, brand_color: e.target.value }))}
+                  className="w-32"
+                />
+              </div>
+            </div>
+            <Input
+              label="Logo URL (optional)"
+              placeholder="https://yourdomain.com/logo.png"
+              hint="A hosted image URL — square logos work best."
+              value={profile.brand_logo_url || ""}
+              onChange={(e) => setProfile((p) => ({ ...p, brand_logo_url: e.target.value }))}
+            />
+            {profile.brand_logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={profile.brand_logo_url}
+                alt="Brand logo preview"
+                className="h-12 object-contain"
+              />
+            )}
           </div>
         )}
 

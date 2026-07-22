@@ -4,16 +4,22 @@ import { FileText, Eye, Download, MoreHorizontal, Plus, Search } from "lucide-re
 import { Button } from "@/components/ui/Button";
 import { Policy } from "@/types";
 import { PoliciesClient } from "@/components/policies/PoliciesClient";
+import { resolveBranding } from "@/lib/branding";
 
 export default async function PoliciesPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: policies } = await supabase
-    .from("policies")
-    .select("*")
-    .eq("user_id", user!.id)
-    .order("created_at", { ascending: false });
+  const [{ data: policies }, { data: profile }] = await Promise.all([
+    supabase
+      .from("policies")
+      .select("*")
+      .eq("user_id", user!.id)
+      .order("created_at", { ascending: false }),
+    supabase.from("company_profiles").select("brand_name, brand_color, brand_logo_url").eq("user_id", user!.id).single(),
+  ]);
+
+  const branding = resolveBranding(profile);
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -30,7 +36,7 @@ export default async function PoliciesPage() {
         </Link>
       </div>
 
-      <PoliciesClient initialPolicies={(policies as Policy[]) || []} />
+      <PoliciesClient initialPolicies={(policies as Policy[]) || []} branding={branding} />
     </div>
   );
 }

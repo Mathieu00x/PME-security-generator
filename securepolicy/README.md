@@ -1,4 +1,4 @@
-# SecurePolicy
+# SecurePilot
 
 AI-powered security policy generator for small and medium businesses.
 
@@ -19,6 +19,7 @@ Fill in your keys:
 
 ### 3. Set up the database
 In your Supabase project, go to **SQL Editor** and run the contents of `supabase-schema.sql`.
+This file is idempotent — re-run it any time after pulling changes to apply new tables/columns (e.g. policy versioning).
 
 ### 4. Run the dev server
 ```bash
@@ -33,4 +34,4 @@ Open [http://localhost:3000](http://localhost:3000).
 - **Tailwind CSS**
 - **Supabase** (Auth + PostgreSQL)
 - **Anthropic Claude** (Policy generation)
-- **jsPDF** (PDF export)
+- **jsPDF** / **jspdf-autotable** (PDF export)

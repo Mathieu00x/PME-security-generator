@@ -1,16 +1,21 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, FileText, Clock } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Policy } from "@/types";
-import { PolicyViewer } from "@/components/policies/PolicyViewer";
+import { Policy, PolicyVersion } from "@/types";
+import { resolveBranding } from "@/lib/branding";
 import { DownloadPDFButton } from "@/components/policies/DownloadPDFButton";
 import { DownloadWordButton } from "@/components/policies/DownloadWordButton";
 import { BestPracticesCard } from "@/components/policies/BestPracticesCard";
 import { ActionChecklist } from "@/components/policies/ActionChecklist";
 import { ComplianceBadges } from "@/components/policies/ComplianceBadges";
+import { PolicyImportanceCard } from "@/components/policies/PolicyImportanceCard";
+import { AuditEvidenceCard } from "@/components/policies/AuditEvidenceCard";
+import { ClientPortalCard } from "@/components/policies/ClientPortalCard";
+import { PolicyDetailTabs } from "@/components/policies/PolicyDetailTabs";
+import { ExportToWorkspaceButton } from "@/components/policies/ExportToWorkspaceButton";
 
 export default async function PolicyDetailPage({
   params,
@@ -22,13 +27,20 @@ export default async function PolicyDetailPage({
 
   const [{ data: policy }, { data: profile }] = await Promise.all([
     supabase.from("policies").select("*").eq("id", params.id).eq("user_id", user!.id).single(),
-    supabase.from("company_profiles").select("company_name").eq("user_id", user!.id).single(),
+    supabase.from("company_profiles").select("company_name, brand_name, brand_color, brand_logo_url").eq("user_id", user!.id).single(),
   ]);
 
   if (!policy) notFound();
 
   const p = policy as Policy;
   const companyName = profile?.company_name ?? "Your Company";
+  const branding = resolveBranding(profile);
+
+  const { data: versions } = await supabase
+    .from("policy_versions")
+    .select("*")
+    .eq("policy_id", p.id)
+    .order("version_number", { ascending: false });
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -53,9 +65,11 @@ export default async function PolicyDetailPage({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <DownloadWordButton policy={p} companyName={companyName} />
-          <DownloadPDFButton policy={p} companyName={companyName} />
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <DownloadWordButton policy={p} companyName={companyName} branding={branding} />
+          <DownloadPDFButton policy={p} companyName={companyName} branding={branding} />
+          <ExportToWorkspaceButton policyId={p.id} provider="notion" />
+          <ExportToWorkspaceButton policyId={p.id} provider="confluence" />
           <Link href={`/generate?regenerate=${p.id}`}>
             <Button variant="outline" size="sm">
               <RefreshCw size={14} />
@@ -75,25 +89,12 @@ export default async function PolicyDetailPage({
       <div className="grid grid-cols-3 gap-4">
         {/* Document */}
         <div className="col-span-2">
-          {/* Tabs */}
-          <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-4 w-fit">
-            {["Overview", "Document", "Version History"].map((tab) => (
-              <button
-                key={tab}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  tab === "Document"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                {tab === "Overview" && <FileText size={13} />}
-                {tab === "Document" && <FileText size={13} />}
-                {tab === "Version History" && <Clock size={13} />}
-                {tab}
-              </button>
-            ))}
-          </div>
-          <PolicyViewer content={p.content} />
+          <PolicyDetailTabs
+            policyId={p.id}
+            content={p.content}
+            currentVersionNumber={p.version_number}
+            versions={(versions as PolicyVersion[]) || []}
+          />
         </div>
 
         {/* Sidebar */}
@@ -114,6 +115,12 @@ export default async function PolicyDetailPage({
               ))}
             </dl>
           </Card>
+
+          <ClientPortalCard
+            policyId={p.id}
+            initialEnabled={p.share_enabled ?? false}
+            initialToken={p.share_token ?? null}
+          />
 
           {p.security_score && (
             <Card padding="sm">
@@ -140,6 +147,14 @@ export default async function PolicyDetailPage({
                 View full security report →
               </Link>
             </Card>
+          )}
+
+          {p.security_score?.policyImportance && (
+            <PolicyImportanceCard importance={p.security_score.policyImportance} />
+          )}
+
+          {p.security_score?.auditEvidence && p.security_score.auditEvidence.length > 0 && (
+            <AuditEvidenceCard evidence={p.security_score.auditEvidence} />
           )}
 
           {p.security_score?.bestPractices && (

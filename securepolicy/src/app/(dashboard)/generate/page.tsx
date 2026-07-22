@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronRight, ChevronLeft, Lock, HardDrive, AlertTriangle, Monitor, Wifi, Sparkles } from "lucide-react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronRight, ChevronLeft, Lock, HardDrive, AlertTriangle, Monitor, Wifi, Sparkles, ClipboardCheck, Radar } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { PolicyType } from "@/types";
-import { POLICY_QUESTIONS } from "@/lib/prompts";
+import { AttackSurfaceReport, PolicyType } from "@/types";
+import { POLICY_QUESTIONS, GENERATION_REASONS } from "@/lib/prompts";
+import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 
 const POLICY_TYPES: {
@@ -22,9 +23,32 @@ const POLICY_TYPES: {
 ];
 
 export default function GeneratePage() {
+  return (
+    <Suspense fallback={null}>
+      <GeneratePageInner />
+    </Suspense>
+  );
+}
+
+const KNOWN_POLICY_TYPES: PolicyType[] = ["password", "backup", "incident-response", "acceptable-use", "remote-work"];
+
+function GeneratePageInner() {
   const router = useRouter();
-  const [step, setStep] = useState<"select" | "questionnaire" | "generating">("select");
-  const [selectedType, setSelectedType] = useState<PolicyType | null>(null);
+  const searchParams = useSearchParams();
+  const regenerateId = searchParams.get("regenerate");
+  const typeParam = searchParams.get("type");
+  const fromScan = searchParams.get("from") === "scan";
+  const scanId = searchParams.get("scanId");
+  const prefilledType = !regenerateId && typeParam && KNOWN_POLICY_TYPES.includes(typeParam as PolicyType)
+    ? (typeParam as PolicyType)
+    : null;
+
+  const [step, setStep] = useState<"select" | "why" | "questionnaire" | "generating" | "loading">(
+    regenerateId ? "loading" : prefilledType ? "why" : "select"
+  );
+  const [policyId, setPolicyId] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<PolicyType | null>(prefilledType);
+  const [generationReason, setGenerationReason] = useState<string>("");
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState(false);
@@ -32,11 +56,74 @@ export default function GeneratePage() {
   const questions = selectedType ? POLICY_QUESTIONS[selectedType] : [];
   const progress = questions.length > 0 ? ((currentQ) / questions.length) * 100 : 0;
 
+  useEffect(() => {
+    if (!regenerateId) return;
+
+    async function loadForRegeneration(id: string) {
+      const supabase = createClient();
+      const { data: policy } = await supabase
+        .from("policies")
+        .select("id, type, answers, generation_reason")
+        .eq("id", id)
+        .single();
+
+      if (!policy) {
+        toast.error("Policy not found.");
+        setStep("select");
+        return;
+      }
+
+      setPolicyId(policy.id);
+      setSelectedType(policy.type as PolicyType);
+      setAnswers((policy.answers as Record<string, string>) || {});
+      setGenerationReason(policy.generation_reason || "internal");
+      setCurrentQ(0);
+      setStep("questionnaire");
+    }
+
+    loadForRegeneration(regenerateId);
+  }, [regenerateId]);
+
+  // Coming from a scan: prefill a few questionnaire answers that the scan
+  // findings already answer, so the user doesn't have to re-state them.
+  useEffect(() => {
+    if (!scanId || !prefilledType) return;
+
+    async function loadFromScan(id: string, type: PolicyType) {
+      const supabase = createClient();
+      const { data: report } = await supabase
+        .from("attack_surface_reports")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (!report) return;
+      const scan = report as AttackSurfaceReport;
+      const prefill: Record<string, string> = {};
+
+      if (scan.emails_compromis.compromisedCount > 0) {
+        if (type === "password") prefill.mfa_required = "No";
+        if (type === "incident-response") prefill.previous_incidents = "Yes";
+      }
+      if ((!scan.ssl.hasSSL || scan.ssl.expired) && type === "remote-work") {
+        prefill.vpn = "No";
+      }
+
+      if (Object.keys(prefill).length > 0) {
+        setAnswers((prev) => ({ ...prefill, ...prev }));
+      }
+    }
+
+    loadFromScan(scanId, prefilledType);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanId, prefilledType]);
+
   function handleSelectType(type: PolicyType) {
     setSelectedType(type);
-    setStep("questionnaire");
+    setStep("why");
     setCurrentQ(0);
     setAnswers({});
+    setGenerationReason("");
   }
 
   function handleAnswer(value: string) {
@@ -62,7 +149,7 @@ export default function GeneratePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ policyType: selectedType, answers }),
+        body: JSON.stringify({ policyType: selectedType, answers, generationReason, policyId, scanId }),
       });
 
       if (!res.ok) {
@@ -70,14 +157,25 @@ export default function GeneratePage() {
         throw new Error(err.error || "Generation failed");
       }
 
-      const { policyId } = await res.json();
-      router.push(`/policies/${policyId}`);
+      const { policyId: newPolicyId } = await res.json();
+      router.push(`/policies/${newPolicyId}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
       toast.error(message);
       setStep("questionnaire");
       setGenerating(false);
     }
+  }
+
+  if (step === "loading") {
+    return (
+      <div className="max-w-lg mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
+          <Sparkles size={28} className="text-blue-600 animate-pulse" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Loading policy…</h2>
+      </div>
+    );
   }
 
   if (step === "generating") {
@@ -99,12 +197,78 @@ export default function GeneratePage() {
     );
   }
 
+  const scanBanner = fromScan && (
+    <div className="flex items-start gap-2.5 mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+      <Radar size={15} className="text-blue-600 flex-shrink-0 mt-0.5" />
+      <p className="text-xs text-blue-800">
+        Ce type de politique a été recommandé suite au diagnostic de votre domaine.
+      </p>
+    </div>
+  );
+
+  if (step === "why" && selectedType) {
+    const selectedLabel = POLICY_TYPES.find((p) => p.type === selectedType)?.label;
+    return (
+      <div className="max-w-xl mx-auto">
+        {scanBanner}
+        <Card>
+          <div className="flex items-center gap-2 mb-1">
+            <ClipboardCheck size={16} className="text-blue-600" />
+            <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">
+              {selectedLabel}
+            </p>
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            Why are you generating this policy?
+          </h2>
+          <p className="text-sm text-gray-500 mb-6">
+            This helps our AI adapt the tone and sections to your specific context.
+          </p>
+
+          <div className="flex flex-col gap-2">
+            {GENERATION_REASONS.map((r) => (
+              <label
+                key={r.value}
+                className={`flex items-center gap-3 p-3.5 rounded-lg border cursor-pointer transition-colors ${
+                  generationReason === r.value
+                    ? "border-blue-600 bg-blue-50"
+                    : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="generationReason"
+                  value={r.value}
+                  checked={generationReason === r.value}
+                  onChange={() => setGenerationReason(r.value)}
+                  className="accent-blue-600"
+                />
+                <span className="text-sm text-gray-800">{r.label}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between mt-8">
+            <Button variant="outline" onClick={() => setStep("select")}>
+              <ChevronLeft size={16} />
+              Back
+            </Button>
+            <Button onClick={() => setStep("questionnaire")} disabled={!generationReason}>
+              Continue <ChevronRight size={16} />
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   if (step === "questionnaire" && selectedType) {
     const q = questions[currentQ];
     const currentAnswer = answers[q.id] || "";
 
     return (
       <div className="max-w-xl mx-auto">
+        {scanBanner}
         <div className="mb-6">
           <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
             <span>Step {currentQ + 1} of {questions.length}</span>
@@ -124,32 +288,7 @@ export default function GeneratePage() {
           </p>
           <h2 className="text-lg font-semibold text-gray-900 mb-6">{q.question}</h2>
 
-          {q.type === "radio" && q.options && (
-            <div className="flex flex-col gap-2">
-              {q.options.map((opt) => (
-                <label
-                  key={opt}
-                  className={`flex items-center gap-3 p-3.5 rounded-lg border cursor-pointer transition-colors ${
-                    currentAnswer === opt
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={q.id}
-                    value={opt}
-                    checked={currentAnswer === opt}
-                    onChange={() => handleAnswer(opt)}
-                    className="accent-blue-600"
-                  />
-                  <span className="text-sm text-gray-800">{opt}</span>
-                </label>
-              ))}
-            </div>
-          )}
-
-          {q.type === "select" && q.options && (
+          {(q.type === "radio" || q.type === "select") && q.options && (
             <div className="flex flex-col gap-2">
               {q.options.map((opt) => (
                 <label
@@ -189,7 +328,7 @@ export default function GeneratePage() {
               variant="outline"
               onClick={() => {
                 if (currentQ === 0) {
-                  setStep("select");
+                  setStep("why");
                 } else {
                   setCurrentQ((c) => c - 1);
                 }
@@ -202,7 +341,7 @@ export default function GeneratePage() {
               {currentQ < questions.length - 1 ? (
                 <>Next <ChevronRight size={16} /></>
               ) : (
-                <>Generate <Sparkles size={16} /></>
+                <>{policyId ? "Regenerate" : "Generate"} <Sparkles size={16} /></>
               )}
             </Button>
           </div>

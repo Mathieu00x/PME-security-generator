@@ -42,15 +42,29 @@ Uses Personal Devices: ${profile.uses_personal_devices ? "Yes" : "No"}`;
 }
 
 export function buildQuestionnaireContext(
-  answers: Record<string, string>
+  answers: Record<string, string>,
+  generationReason?: string
 ): string {
+  const reasonLine = generationReason
+    ? `Generation Purpose: ${generationReason}\n`
+    : "";
   return (
     "Questionnaire Answers\n" +
+    reasonLine +
     Object.entries(answers)
+      .filter(([k]) => k !== "_generationReason")
       .map(([q, a]) => `${q}: ${a}`)
       .join("\n")
   );
 }
+
+export const GENERATION_REASONS = [
+  { value: "audit", label: "Internal or external audit" },
+  { value: "insurance", label: "Cyber insurance requirement" },
+  { value: "client", label: "Client or partner requirement" },
+  { value: "certification", label: "Certification (ISO 27001, SOC 2…)" },
+  { value: "internal", label: "Internal improvement" },
+];
 
 export const POLICY_TEMPLATES: Record<PolicyType, string> = {
   password: `Create a professional Password Policy using the following sections:
@@ -156,16 +170,38 @@ After generating the document, on a new line write exactly "---JSON---" and then
     "keywords": ["string"]
   },
   "securityScore": number (0-100),
+  "maturityLevel": "Basic | Developing | Defined | Advanced",
+  "executiveSummary": "2-3 sentence plain-language summary of this policy's purpose and business impact, written for a non-technical executive or client — no jargon",
   "strengths": ["string"],
   "weaknesses": ["string"],
-  "recommendations": ["string"],
+  "recommendations": [
+    {
+      "priority": "high | medium | low",
+      "text": "A strategic recommendation (distinct from the concrete actionItems below)"
+    }
+  ],
   "missingPolicies": ["string"],
   "riskLevel": "Low | Medium | High",
   "complianceMapping": {
-    "NIST": ["relevant NIST CSF subcategory IDs this policy addresses, e.g. PR.AC-1"],
-    "CIS": ["relevant CIS Control IDs this policy addresses, e.g. CIS Control 5"],
-    "ISO27001": ["relevant ISO 27001 clause references, e.g. A.9.4.3"]
+    "NIST": ["relevant NIST CSF subcategory ID + short control title this policy addresses, e.g. 'PR.AC-1 — Identity and Credential Management'"],
+    "CIS": ["relevant CIS Control ID + short control title this policy addresses, e.g. 'CIS Control 5 — Account Management'"],
+    "ISO27001": ["relevant ISO 27001 clause reference + short control title, e.g. 'A.5.17 — Authentication Information'"],
+    "SOC2": ["relevant SOC 2 Trust Service Criteria + short control title, e.g. 'CC6.1 — Logical Access Controls'"],
+    "Loi25": ["relevant Loi 25 / Law 25 Quebec provisions if applicable, e.g. 'Art. 12 — Consent'"],
+    "RGPD": ["relevant GDPR articles if applicable, e.g. 'Art. 32 — Security of Processing'"]
   },
+  "gapAnalysis": {
+    "compliancePercentage": number (0-100, current compliance level for this policy area based on the questionnaire answers),
+    "missingControlsCount": number (count of missingControls below),
+    "missingControls": ["short name of a specific control that is not yet in place, e.g. 'Password manager enforcement', 'FIDO2 / hardware security keys'"],
+    "associatedRisk": "Low | Medium | High"
+  },
+  "auditEvidence": [
+    {
+      "type": "one of: backup_register | asset_inventory | training_register | incident_register | access_register | rights_request_register | third_party_register",
+      "reason": "One sentence explaining why this specific policy requires this register as audit evidence"
+    }
+  ],
   "bestPractices": {
     "dos": ["3-5 concrete best practices to follow for this policy type, specific and actionable"],
     "donts": ["3-5 common mistakes to avoid, specific and actionable"]
@@ -174,12 +210,20 @@ After generating the document, on a new line write exactly "---JSON---" and then
     {
       "priority": "high | medium | low",
       "task": "Specific action the company should take based on their questionnaire answers",
+      "estimatedTime": "e.g. 20 minutes | 1 hour | 1 day",
       "tool": "Optional: recommended free or affordable tool (e.g. Bitwarden, Backblaze, Authy)"
     }
-  ]
+  ],
+  "policyImportance": {
+    "requestedBy": ["list of stakeholders who commonly require this policy, e.g. 'Cyber insurer', 'Enterprise clients', 'External auditor', 'ISO certification body', 'Board of directors'"],
+    "businessValue": "One sentence explaining the concrete business value of having this policy in place"
+  }
 }
 
-Generate 5-8 actionItems tailored to the company's actual situation from the questionnaire. Prioritize based on risk. Include a tool recommendation when a specific affordable tool exists.`;
+Generate 5-8 actionItems tailored to the company's actual situation from the questionnaire. Prioritize based on risk. Include a tool recommendation when a specific affordable tool exists. Always include estimatedTime for each action.
+Generate 3-6 recommendations, each with its own priority. Recommendations are strategic (what to improve and why); actionItems are concrete (what to do, with a tool and time estimate) — do not duplicate the same point in both.
+The gapAnalysis must be internally consistent: missingControlsCount must equal the length of missingControls, and a higher missingControlsCount / lower compliancePercentage should correspond to a higher associatedRisk.
+Select 2-4 auditEvidence registers that are genuinely relevant to THIS policy type from the fixed list above only — do not invent new register names. For example a Password Policy typically needs access_register; an Incident Response Plan needs incident_register; a policy touching personal data may need rights_request_register; a policy involving vendors/cloud providers needs third_party_register.`;
 
 export const POLICY_QUESTIONS: Record<
   PolicyType,

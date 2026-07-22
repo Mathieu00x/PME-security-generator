@@ -60,9 +60,14 @@ export function ActionChecklist({ actionItems }: { actionItems: ActionItem[] }) 
               <p className={`text-xs text-gray-700 leading-relaxed ${checked[i] ? "line-through text-gray-400" : ""}`}>
                 {item.task}
               </p>
-              {item.tool && (
-                <p className="text-[10px] text-blue-600 mt-0.5">→ {item.tool}</p>
-              )}
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                {item.estimatedTime && (
+                  <p className="text-[10px] text-gray-400">⏱ {item.estimatedTime}</p>
+                )}
+                {item.tool && (
+                  <p className="text-[10px] text-blue-600">→ {item.tool}</p>
+                )}
+              </div>
             </div>
           </li>
         ))}

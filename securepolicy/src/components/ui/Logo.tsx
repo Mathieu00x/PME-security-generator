@@ -48,7 +48,7 @@ export function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
     <Link href="/" className="flex items-center gap-2">
       <ShieldIcon size={s.shield} />
       <span className={`${s.text} font-bold tracking-tight text-gray-900`}>
-        Secure<span className="text-blue-600">Policy</span>
+        Secure<span className="text-blue-600">Pilot</span>
       </span>
     </Link>
   );

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { FileText, Eye, Download, Pencil, Trash2, MoreHorizontal, Search } from "lucide-react";
-import { Policy } from "@/types";
+import { Branding, Policy } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { DownloadPDFButton } from "@/components/policies/DownloadPDFButton";
@@ -12,7 +12,7 @@ const STATUS_STYLE: Record<string, string> = {
   draft: "bg-yellow-100 text-yellow-700",
 };
 
-export function PoliciesClient({ initialPolicies }: { initialPolicies: Policy[] }) {
+export function PoliciesClient({ initialPolicies, branding }: { initialPolicies: Policy[]; branding?: Branding }) {
   const [policies, setPolicies] = useState<Policy[]>(initialPolicies);
   const [search, setSearch] = useState("");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -138,7 +138,7 @@ export function PoliciesClient({ initialPolicies }: { initialPolicies: Policy[] 
                     <Eye size={15} />
                   </button>
                 </Link>
-                <DownloadPDFButton policy={policy} iconOnly />
+                <DownloadPDFButton policy={policy} branding={branding} iconOnly />
                 <div className="relative">
                   <button
                     onClick={() => setOpenMenu(openMenu === policy.id ? null : policy.id)}

@@ -12,13 +12,13 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options as Parameters<typeof supabaseResponse.cookies.set>[2])
           );
         },
       },
@@ -35,10 +35,13 @@ export async function updateSession(request: NextRequest) {
 
   const isDashboardPage =
     request.nextUrl.pathname.startsWith("/dashboard") ||
+    request.nextUrl.pathname.startsWith("/scan") ||
     request.nextUrl.pathname.startsWith("/policies") ||
     request.nextUrl.pathname.startsWith("/generate") ||
     request.nextUrl.pathname.startsWith("/company-profile") ||
     request.nextUrl.pathname.startsWith("/security-score") ||
+    request.nextUrl.pathname.startsWith("/audit-evidence") ||
+    request.nextUrl.pathname.startsWith("/frameworks") ||
     request.nextUrl.pathname.startsWith("/settings");
 
   if (!user && isDashboardPage) {

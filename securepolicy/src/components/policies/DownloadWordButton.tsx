@@ -1,15 +1,21 @@
 "use client";
 import { useState } from "react";
 import { FileText, Loader2 } from "lucide-react";
-import { Policy } from "@/types";
+import { Policy, Branding } from "@/types";
+import { COMPLIANCE_STANDARD_LABELS } from "@/lib/complianceLabels";
+import { ARTIFACT_DEFINITIONS } from "@/lib/artifacts";
+import { resolveBranding } from "@/lib/branding";
 
 interface Props {
   policy: Policy;
   companyName?: string;
+  branding?: Branding;
 }
 
-export function DownloadWordButton({ policy, companyName = "Your Company" }: Props) {
+export function DownloadWordButton({ policy, companyName = "Your Company", branding }: Props) {
   const [loading, setLoading] = useState(false);
+  const brand = branding || resolveBranding(null);
+  const brandColorHex = brand.color.replace("#", "").toUpperCase();
 
   async function handleDownload() {
     setLoading(true);
@@ -40,7 +46,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company" }: Pro
       const cellBorders = { top: border, bottom: border, left: border, right: border };
 
       /** Strip markdown bold (**text**) and return TextRun array with bold applied */
-      function parseInline(text: string): InstanceType<typeof TextRun>[] {
+      const parseInline = (text: string): InstanceType<typeof TextRun>[] => {
         const parts: InstanceType<typeof TextRun>[] = [];
         const re = /\*\*(.+?)\*\*/g;
         let last = 0;
@@ -52,10 +58,10 @@ export function DownloadWordButton({ policy, companyName = "Your Company" }: Pro
         }
         if (last < text.length) parts.push(new TextRun({ text: text.slice(last), size: 20 }));
         return parts;
-      }
+      };
 
       /** Parse a markdown table block into a Word Table */
-      function makeTable(rows: string[]): InstanceType<typeof Table> {
+      const makeTable = (rows: string[]): InstanceType<typeof Table> => {
         const dataRows = rows.filter((r) => !r.match(/^\|[-:| ]+\|$/));
         const parsedRows = dataRows.map((r) =>
           r
@@ -90,7 +96,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company" }: Pro
             })
           ),
         });
-      }
+      };
 
       // ── Numbering config ──────────────────────────────────────────────
       const numberingConfig = {
@@ -159,6 +165,23 @@ export function DownloadWordButton({ policy, companyName = "Your Company" }: Pro
           ),
         }) as unknown as DocChild
       );
+
+      if (policy.security_score?.executiveSummary) {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: "EXECUTIVE SUMMARY", bold: true, size: 16, color: "64748B" })],
+            spacing: { before: 240, after: 80 },
+          }),
+          new Paragraph({
+            shading: { fill: "F8FAFC", type: ShadingType.CLEAR },
+            children: [new TextRun({ text: policy.security_score.executiveSummary, size: 20, color: "334155" })],
+            spacing: { after: 120 },
+            border: {
+              top: border, bottom: border, left: border, right: border,
+            },
+          })
+        );
+      }
 
       children.push(new Paragraph({ children: [new PageBreak()] }));
 
@@ -257,6 +280,149 @@ export function DownloadWordButton({ policy, companyName = "Your Company" }: Pro
         i++;
       }
 
+      // ── Compliance Mapping ──────────────────────────────────────────────
+      const fullMapping = policy.security_score?.complianceMapping;
+      if (fullMapping) {
+        const entries = Object.entries(fullMapping).filter(([, codes]) => codes && codes.length);
+
+        if (entries.length) {
+          children.push(new Paragraph({ children: [new PageBreak()] }));
+          children.push(new Paragraph({
+            heading: HeadingLevel.HEADING_1,
+            children: [new TextRun("Mapping aux normes")],
+            spacing: { before: 0, after: 200 },
+          }));
+
+          entries.forEach(([key, codes]) => {
+            children.push(new Paragraph({
+              children: [new TextRun({ text: COMPLIANCE_STANDARD_LABELS[key] || key, bold: true, size: 22, color: brandColorHex })],
+              spacing: { before: 160, after: 80 },
+            }));
+            (codes as string[]).forEach((code) => {
+              children.push(new Paragraph({
+                children: [new TextRun({ text: code, size: 20 })],
+                numbering: { reference: "bullets", level: 0 },
+                spacing: { after: 60 },
+              }));
+            });
+          });
+        }
+      }
+
+      // ── Gap Analysis ─────────────────────────────────────────────────────
+      const gap = policy.security_score?.gapAnalysis;
+      if (gap) {
+        children.push(new Paragraph({ children: [new PageBreak()] }));
+        children.push(new Paragraph({
+          heading: HeadingLevel.HEADING_1,
+          children: [new TextRun("Analyse des écarts (Gap Analysis)")],
+          spacing: { before: 0, after: 200 },
+        }));
+
+        const statCellW = 3009;
+        const gapStats: [string, string][] = [
+          ["Conformité actuelle", `${gap.compliancePercentage}%`],
+          ["Contrôles manquants", `${gap.missingControlsCount}`],
+          ["Risque associé", gap.associatedRisk],
+        ];
+        children.push(
+          new Table({
+            width: { size: 9026, type: WidthType.DXA },
+            columnWidths: [statCellW, statCellW, statCellW],
+            rows: [
+              new TableRow({
+                children: gapStats.map(
+                  ([label, value]) =>
+                    new TableCell({
+                      borders: cellBorders,
+                      width: { size: statCellW, type: WidthType.DXA },
+                      shading: { fill: "F8FAFC", type: ShadingType.CLEAR },
+                      margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                      children: [
+                        new Paragraph({ children: [new TextRun({ text: label.toUpperCase(), size: 14, color: "64748B" })] }),
+                        new Paragraph({ children: [new TextRun({ text: value, bold: true, size: 32, color: "1E3A5F" })], spacing: { before: 60 } }),
+                      ],
+                    })
+                ),
+              }),
+            ],
+          }) as unknown as DocChild
+        );
+        children.push(new Paragraph({ text: "", spacing: { after: 160 } }));
+
+        if (gap.missingControls.length) {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: "Contrôles manquants", bold: true, size: 22, color: "B91C1C" })],
+            spacing: { before: 80, after: 80 },
+          }));
+          gap.missingControls.forEach((mc) => {
+            children.push(new Paragraph({
+              children: [new TextRun({ text: mc, size: 20 })],
+              numbering: { reference: "bullets", level: 0 },
+              spacing: { after: 60 },
+            }));
+          });
+        }
+      }
+
+      // ── Audit Evidence ────────────────────────────────────────────────────
+      const auditEvidence = policy.security_score?.auditEvidence;
+      if (auditEvidence && auditEvidence.length) {
+        children.push(new Paragraph({ children: [new PageBreak()] }));
+        children.push(new Paragraph({
+          heading: HeadingLevel.HEADING_1,
+          children: [new TextRun("Audit Evidence")],
+          spacing: { before: 0, after: 80 },
+        }));
+        children.push(new Paragraph({
+          children: [new TextRun({ text: "Registers you should maintain to demonstrate compliance with this policy.", size: 18, color: "64748B", italics: true })],
+          spacing: { after: 160 },
+        }));
+
+        auditEvidence.forEach((evidence) => {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: ARTIFACT_DEFINITIONS[evidence.type]?.title || evidence.type, bold: true, size: 20, color: brandColorHex })],
+            spacing: { before: 120, after: 40 },
+          }));
+          children.push(new Paragraph({
+            children: [new TextRun({ text: evidence.reason, size: 20 })],
+            spacing: { after: 40 },
+          }));
+        });
+      }
+
+      // ── Prioritized Recommendations ──────────────────────────────────────
+      const recommendations = policy.security_score?.recommendations;
+      if (recommendations && recommendations.length) {
+        children.push(new Paragraph({ children: [new PageBreak()] }));
+        children.push(new Paragraph({
+          heading: HeadingLevel.HEADING_1,
+          children: [new TextRun("Recommandations priorisées")],
+          spacing: { before: 0, after: 200 },
+        }));
+
+        const RECO_COLORS: Record<string, string> = {
+          high: "DC2626",
+          medium: "D97706",
+          low: "2563EB",
+        };
+        const RECO_LABELS: Record<string, string> = {
+          high: "HAUTE",
+          medium: "MOYENNE",
+          low: "FAIBLE",
+        };
+
+        recommendations.forEach((rec) => {
+          children.push(new Paragraph({
+            children: [
+              new TextRun({ text: `[${RECO_LABELS[rec.priority] || rec.priority.toUpperCase()}]  `, bold: true, size: 18, color: RECO_COLORS[rec.priority] || "64748B" }),
+              new TextRun({ text: rec.text, size: 20 }),
+            ],
+            spacing: { after: 120 },
+          }));
+        });
+      }
+
       // ── Best Practices ────────────────────────────────────────────────
       const bp = policy.security_score?.bestPractices;
       if (bp && (bp.dos.length || bp.donts.length)) {
@@ -327,7 +493,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company" }: Pro
                 new TextRun({ text: `[${label}]  `, bold: true, size: 18, color }),
                 new TextRun({ text: item.task, size: 20 }),
                 ...(item.tool
-                  ? [new TextRun({ text: `  →  ${item.tool}`, size: 18, color: "2563EB", italics: true })]
+                  ? [new TextRun({ text: `  →  ${item.tool}`, size: 18, color: brandColorHex, italics: true })]
                   : []),
               ],
               spacing: { after: 120 },
@@ -359,7 +525,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company" }: Pro
               basedOn: "Normal",
               next: "Normal",
               quickFormat: true,
-              run: { size: 24, bold: true, font: "Calibri", color: "2563EB" },
+              run: { size: 24, bold: true, font: "Calibri", color: brandColorHex },
               paragraph: { spacing: { before: 240, after: 80 }, outlineLevel: 1 },
             },
             {
@@ -386,7 +552,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company" }: Pro
                 children: [
                   new Paragraph({
                     children: [
-                      new TextRun({ text: "SecurePolicy  —  ", size: 16, color: "94A3B8" }),
+                      new TextRun({ text: `${brand.name}  —  `, size: 16, color: "94A3B8" }),
                       new TextRun({ text: policy.title, size: 16, bold: true, color: "64748B" }),
                       new TextRun({ text: "\t", size: 16 }),
                       new TextRun({ text: "CONFIDENTIEL", size: 16, color: "94A3B8" }),

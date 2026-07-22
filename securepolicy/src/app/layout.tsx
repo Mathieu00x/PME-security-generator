@@ -4,7 +4,7 @@ import { Toaster } from "react-hot-toast";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
 export const metadata: Metadata = {
-  title: "SecurePolicy — Politiques de sécurité pour PME / AI-Powered Security Policies for SMBs",
+  title: "SecurePilot — Politiques de sécurité pour PME / AI-Powered Security Policies for SMBs",
   description:
     "Générez des politiques de cybersécurité professionnelles en minutes. Generate professional cybersecurity policies in minutes.",
 };

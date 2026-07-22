@@ -9,6 +9,9 @@ import {
   Shield,
   Settings,
   LogOut,
+  BookOpen,
+  ClipboardCheck,
+  Radar,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { createClient } from "@/lib/supabase/client";
@@ -17,10 +20,13 @@ import toast from "react-hot-toast";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/scan", label: "Diagnostic", icon: Radar },
   { href: "/policies", label: "Policies", icon: FileText },
   { href: "/generate", label: "Generate Policy", icon: PlusCircle },
   { href: "/company-profile", label: "Company Profile", icon: Building2 },
   { href: "/security-score", label: "Security Score", icon: Shield },
+  { href: "/audit-evidence", label: "Audit Evidence", icon: ClipboardCheck },
+  { href: "/frameworks", label: "Frameworks", icon: BookOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

@@ -4,12 +4,18 @@ interface ComplianceMapping {
   NIST?: string[];
   CIS?: string[];
   ISO27001?: string[];
+  SOC2?: string[];
+  Loi25?: string[];
+  RGPD?: string[];
 }
 
 const STANDARDS = [
   { key: "NIST", label: "NIST CSF", color: "bg-blue-50 text-blue-700 border-blue-100" },
   { key: "CIS", label: "CIS Controls", color: "bg-purple-50 text-purple-700 border-purple-100" },
   { key: "ISO27001", label: "ISO 27001", color: "bg-green-50 text-green-700 border-green-100" },
+  { key: "SOC2", label: "SOC 2", color: "bg-indigo-50 text-indigo-700 border-indigo-100" },
+  { key: "Loi25", label: "Loi 25", color: "bg-orange-50 text-orange-700 border-orange-100" },
+  { key: "RGPD", label: "RGPD", color: "bg-rose-50 text-rose-700 border-rose-100" },
 ];
 
 export function ComplianceBadges({ mapping }: { mapping: ComplianceMapping }) {
