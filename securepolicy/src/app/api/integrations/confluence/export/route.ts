@@ -35,6 +35,24 @@ export async function POST(req: NextRequest) {
   }
 
   const { baseUrl, email, apiToken, spaceKey } = integration.config as ConfluenceIntegrationConfig;
+  const cleanBaseUrl = baseUrl.replace(/\/+$/, "");
+
+  // Confluence export is only supported for Atlassian Cloud sites. Restricting
+  // to this host pattern also prevents baseUrl from being used as an SSRF
+  // vector against arbitrary internal or third-party hosts.
+  let parsedBaseUrl: URL;
+  try {
+    parsedBaseUrl = new URL(cleanBaseUrl);
+  } catch {
+    return NextResponse.json({ error: "Invalid Confluence site URL." }, { status: 400 });
+  }
+  if (parsedBaseUrl.protocol !== "https:" || !parsedBaseUrl.hostname.endsWith(".atlassian.net")) {
+    return NextResponse.json(
+      { error: "Confluence site URL must be a valid Atlassian Cloud address, e.g. https://yourcompany.atlassian.net." },
+      { status: 400 }
+    );
+  }
+
   const p = policy as Policy;
   const storageHtml = [
     p.security_score?.executiveSummary ? executiveSummaryToConfluenceStorage(p.security_score.executiveSummary) : "",
@@ -43,7 +61,6 @@ export async function POST(req: NextRequest) {
   ]
     .filter(Boolean)
     .join("\n");
-  const cleanBaseUrl = baseUrl.replace(/\/+$/, "");
 
   try {
     const res = await fetch(`${cleanBaseUrl}/wiki/rest/api/content`, {
@@ -63,8 +80,9 @@ export async function POST(req: NextRequest) {
     const created = await res.json();
 
     if (!res.ok) {
+      console.error("Confluence export rejected:", res.status, created?.message);
       return NextResponse.json(
-        { error: created?.message || "Confluence rejected the request. Check your site URL, email, token, and space key." },
+        { error: "Confluence rejected the request. Check your site URL, email, token, and space key." },
         { status: 502 }
       );
     }

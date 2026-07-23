@@ -536,3 +536,45 @@ create policy "Users can manage their own integrations"
       where s.user_id = auth.uid() and s.status = 'active' and p.features ? 'confluence_notion'
     )
   );
+
+-- Defense-in-depth: the auth.uid() = user_id check above already prevents any
+-- cross-tenant read/write regardless of client_id, but these with-check
+-- clauses were missing a client_id ownership check, which allowed a user to
+-- write their own row referencing a client_id they don't own (data-integrity
+-- issue, not a data-isolation bypass). Tightened here so client_id must also
+-- belong to the same user.
+drop policy if exists "Users can manage their own company profile" on public.company_profiles;
+create policy "Users can manage their own company profile"
+  on public.company_profiles for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and (client_id is null or exists (select 1 from public.clients c where c.id = client_id and c.user_id = auth.uid()))
+  );
+
+drop policy if exists "Users can manage their own policies" on public.policies;
+create policy "Users can manage their own policies"
+  on public.policies for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and (client_id is null or exists (select 1 from public.clients c where c.id = client_id and c.user_id = auth.uid()))
+  );
+
+drop policy if exists "Users can manage their own audit artifacts" on public.audit_artifacts;
+create policy "Users can manage their own audit artifacts"
+  on public.audit_artifacts for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and (client_id is null or exists (select 1 from public.clients c where c.id = client_id and c.user_id = auth.uid()))
+  );
+
+drop policy if exists "Users can manage their own attack surface reports" on public.attack_surface_reports;
+create policy "Users can manage their own attack surface reports"
+  on public.attack_surface_reports for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and (client_id is null or exists (select 1 from public.clients c where c.id = client_id and c.user_id = auth.uid()))
+  );

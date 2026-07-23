@@ -14,14 +14,14 @@ export default async function SharedPolicyPage({
 
   const { data: policy } = await supabase
     .from("policies")
-    .select("*")
+    .select("id, user_id, title, content, version, updated_at, security_score")
     .eq("share_token", params.token)
     .eq("share_enabled", true)
     .single();
 
   if (!policy) notFound();
 
-  const p = policy as Policy;
+  const p = policy as Pick<Policy, "id" | "user_id" | "title" | "content" | "version" | "updated_at" | "security_score">;
 
   // White-label (Agency plan): hide the SecurePilot wordmark and footer,
   // showing the owning account's own brand instead.
@@ -37,5 +37,16 @@ export default async function SharedPolicyPage({
     brandName = resolveBranding(accountSettings, true).name;
   }
 
-  return <SharedPolicyView policy={p} whiteLabel={whiteLabel} brandName={brandName} />;
+  // Only forward the fields the public view actually renders — never leak
+  // internal fields like questionnaire answers, generation_reason, or client_id
+  // into the client-rendered RSC payload.
+  const sharedPolicy = {
+    title: p.title,
+    content: p.content,
+    version: p.version,
+    updated_at: p.updated_at,
+    security_score: p.security_score,
+  };
+
+  return <SharedPolicyView policy={sharedPolicy} whiteLabel={whiteLabel} brandName={brandName} />;
 }

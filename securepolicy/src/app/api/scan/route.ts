@@ -6,6 +6,7 @@ import { checkSubdomains, SubdomainsResult } from "@/lib/scanners/subdomains";
 import { checkDNS, DNSResult } from "@/lib/scanners/dns";
 import { PolicyType, ScanFinding } from "@/types";
 import { getActiveClientId } from "@/lib/activeClient";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 const DOMAIN_RE = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/;
 
@@ -104,6 +105,14 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rateLimit = await checkRateLimit(supabase, "attack_surface_reports", user.id, { windowMinutes: 60, max: 10 });
+    if (rateLimit.limited) {
+      return NextResponse.json(
+        { error: "Too many scans. Please wait a bit before scanning again." },
+        { status: 429 }
+      );
+    }
 
     const clientId = await getActiveClientId(supabase, user.id);
     if (!clientId) {

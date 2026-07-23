@@ -793,6 +793,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     "auth.reset.sentTo": "We sent a password reset link to {email}.",
     "auth.reset.resend": "Resend email",
     "auth.reset.sendLink": "Send Reset Link",
+
+    // Error pages
+    "notFound.title": "Page not found",
+    "notFound.desc": "The page you're looking for doesn't exist or may have been moved.",
+    "notFound.cta": "Back to home",
+    "error.title": "Something went wrong",
+    "error.desc": "An unexpected error occurred. Please try again — if it keeps happening, contact support.",
+    "error.retry": "Try again",
+    "error.cta": "Back to home",
   },
 
   fr: {
@@ -1568,6 +1577,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     "auth.reset.sentTo": "Nous avons envoyé un lien de réinitialisation à {email}.",
     "auth.reset.resend": "Renvoyer le courriel",
     "auth.reset.sendLink": "Envoyer le lien",
+
+    // Error pages
+    "notFound.title": "Page introuvable",
+    "notFound.desc": "La page que vous cherchez n'existe pas ou a peut-être été déplacée.",
+    "notFound.cta": "Retour à l'accueil",
+    "error.title": "Une erreur est survenue",
+    "error.desc": "Une erreur inattendue s'est produite. Veuillez réessayer — si le problème persiste, contactez le support.",
+    "error.retry": "Réessayer",
+    "error.cta": "Retour à l'accueil",
   },
 };
 

@@ -12,6 +12,7 @@ import {
 import { ArtifactType, AttackSurfaceReport, PolicyType } from "@/types";
 import { getEntitlements } from "@/lib/entitlements";
 import { getActiveClientId } from "@/lib/activeClient";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 const VALID_ARTIFACT_TYPES: ArtifactType[] = [
   "backup_register",
@@ -51,6 +52,18 @@ export async function POST(req: NextRequest) {
     const entitlements = await getEntitlements(supabase, user.id);
     if (!entitlements.subscription) {
       return NextResponse.json({ error: "Choose a plan before generating policies." }, { status: 403 });
+    }
+
+    const rateLimit = await checkRateLimit(supabase, "policy_versions", user.id, {
+      windowMinutes: 60,
+      max: 20,
+      userColumn: "created_by",
+    });
+    if (rateLimit.limited) {
+      return NextResponse.json(
+        { error: "Too many policies generated recently. Please wait a bit before generating another." },
+        { status: 429 }
+      );
     }
 
     // If regenerating, fetch and verify ownership of the existing policy.

@@ -8,12 +8,14 @@ import { Shield } from "lucide-react";
 import { Policy } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+type SharedPolicy = Pick<Policy, "title" | "content" | "version" | "updated_at" | "security_score">;
+
 export function SharedPolicyView({
   policy,
   whiteLabel,
   brandName,
 }: {
-  policy: Policy;
+  policy: SharedPolicy;
   whiteLabel: boolean;
   brandName: string | null;
 }) {

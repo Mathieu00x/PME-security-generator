@@ -5,6 +5,7 @@
 import { SecurityScore } from "@/types";
 import { COMPLIANCE_STANDARD_LABELS } from "@/lib/complianceLabels";
 import { ARTIFACT_TITLES_EN } from "@/lib/artifacts";
+import { escapeHtml } from "@/lib/htmlEscape";
 
 type NotionRichText = { type: "text"; text: { content: string } };
 type NotionBlock = {
@@ -122,14 +123,6 @@ export function securityScoreToNotionBlocks(score: SecurityScore): NotionBlock[]
   }
 
   return blocks;
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 export function contentToConfluenceStorage(content: string): string {
