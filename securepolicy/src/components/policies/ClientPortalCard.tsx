@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Link2, Copy, Check } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useLanguage } from "@/contexts/LanguageContext";
 import toast from "react-hot-toast";
 
 export function ClientPortalCard({
@@ -14,6 +15,7 @@ export function ClientPortalCard({
   initialEnabled: boolean;
   initialToken: string | null;
 }) {
+  const { t } = useLanguage();
   const [enabled, setEnabled] = useState(initialEnabled);
   const [token, setToken] = useState(initialToken);
   const [loading, setLoading] = useState(false);
@@ -33,9 +35,9 @@ export function ClientPortalCard({
       const data = await res.json();
       setEnabled(data.share_enabled);
       setToken(data.share_token);
-      toast.success(data.share_enabled ? "Client portal link enabled." : "Client portal link disabled.");
+      toast.success(data.share_enabled ? t("sidebar.clientPortal.enabled") : t("sidebar.clientPortal.disabled"));
     } catch {
-      toast.error("Failed to update the client portal link.");
+      toast.error(t("sidebar.clientPortal.updateFailed"));
     } finally {
       setLoading(false);
     }
@@ -51,15 +53,13 @@ export function ClientPortalCard({
     <Card padding="sm">
       <h3 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-1.5">
         <Link2 size={14} className="text-blue-500" />
-        Client Portal
+        {t("sidebar.clientPortal.title")}
       </h3>
-      <p className="text-xs text-gray-500 leading-relaxed mb-3">
-        Share a read-only link so your client can view this policy without an account.
-      </p>
+      <p className="text-xs text-gray-500 leading-relaxed mb-3">{t("sidebar.clientPortal.desc")}</p>
 
       <label className="flex items-center justify-between mb-3 cursor-pointer">
         <span className="text-xs font-medium text-gray-700">
-          {enabled ? "Link enabled" : "Link disabled"}
+          {enabled ? t("sidebar.clientPortal.linkEnabled") : t("sidebar.clientPortal.linkDisabled")}
         </span>
         <button
           onClick={handleToggle}
@@ -86,7 +86,7 @@ export function ClientPortalCard({
           <button
             onClick={handleCopy}
             className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors flex-shrink-0"
-            title="Copy link"
+            title={t("sidebar.clientPortal.copyLink")}
           >
             {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
           </button>

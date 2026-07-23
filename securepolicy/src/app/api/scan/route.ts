@@ -5,6 +5,7 @@ import { checkHIBP, HIBPResult } from "@/lib/scanners/hibp";
 import { checkSubdomains, SubdomainsResult } from "@/lib/scanners/subdomains";
 import { checkDNS, DNSResult } from "@/lib/scanners/dns";
 import { PolicyType, ScanFinding } from "@/types";
+import { getActiveClientId } from "@/lib/activeClient";
 
 const DOMAIN_RE = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/;
 
@@ -104,6 +105,11 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const clientId = await getActiveClientId(supabase, user.id);
+    if (!clientId) {
+      return NextResponse.json({ error: "Select or create a client before scanning." }, { status: 400 });
+    }
+
     // Run every scanner in parallel; each is self-contained and never throws
     // (they catch internally), so one failing check can't block the others.
     const [ssl, hibp, subdomains, dns] = await Promise.all([
@@ -121,6 +127,7 @@ export async function POST(req: NextRequest) {
       .from("attack_surface_reports")
       .insert({
         user_id: user.id,
+        client_id: clientId,
         domain,
         risk_score: riskScore,
         ssl,

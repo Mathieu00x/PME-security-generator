@@ -59,11 +59,11 @@ export function buildQuestionnaireContext(
 }
 
 export const GENERATION_REASONS = [
-  { value: "audit", label: "Internal or external audit" },
-  { value: "insurance", label: "Cyber insurance requirement" },
-  { value: "client", label: "Client or partner requirement" },
-  { value: "certification", label: "Certification (ISO 27001, SOC 2…)" },
-  { value: "internal", label: "Internal improvement" },
+  { value: "audit", labelKey: "genReason.audit" },
+  { value: "insurance", labelKey: "genReason.insurance" },
+  { value: "client", labelKey: "genReason.client" },
+  { value: "certification", labelKey: "genReason.certification" },
+  { value: "internal", labelKey: "genReason.internal" },
 ];
 
 export const POLICY_TEMPLATES: Record<PolicyType, string> = {

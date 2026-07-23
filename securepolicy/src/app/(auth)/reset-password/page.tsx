@@ -6,9 +6,11 @@ import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
 import toast from "react-hot-toast";
 
 export default function ResetPasswordPage() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -35,9 +37,9 @@ export default function ResetPasswordPage() {
           <div className="flex justify-center mb-4">
             <Logo size="lg" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Reset Password</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t("auth.reset.title")}</h1>
           <p className="text-gray-500 text-sm mt-1">
-            {sent ? "Check your inbox." : "Enter your email to receive a reset link."}
+            {sent ? t("auth.reset.checkInbox") : t("auth.reset.subtitleDefault")}
           </p>
         </div>
 
@@ -49,11 +51,9 @@ export default function ResetPasswordPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <p className="text-sm text-gray-600 mb-4">
-                We sent a password reset link to <strong>{email}</strong>.
-              </p>
+              <p className="text-sm text-gray-600 mb-4">{t("auth.reset.sentTo", { email })}</p>
               <Button variant="outline" onClick={() => setSent(false)} className="w-full">
-                Resend email
+                {t("auth.reset.resend")}
               </Button>
             </div>
           ) : (
@@ -61,14 +61,14 @@ export default function ResetPasswordPage() {
               <Input
                 id="email"
                 type="email"
-                label="Email"
+                label={t("auth.email")}
                 placeholder="name@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
               <Button type="submit" loading={loading} size="lg" className="w-full">
-                Send Reset Link
+                {t("auth.reset.sendLink")}
               </Button>
             </form>
           )}
@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
           className="flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mt-6"
         >
           <ArrowLeft size={14} />
-          Back to Sign In
+          {t("auth.backToSignIn")}
         </Link>
       </div>
     </div>

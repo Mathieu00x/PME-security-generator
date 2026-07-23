@@ -10,6 +10,8 @@ import {
   JSON_OUTPUT_PROMPT,
 } from "@/lib/prompts";
 import { ArtifactType, AttackSurfaceReport, PolicyType } from "@/types";
+import { getEntitlements } from "@/lib/entitlements";
+import { getActiveClientId } from "@/lib/activeClient";
 
 const VALID_ARTIFACT_TYPES: ArtifactType[] = [
   "backup_register",
@@ -46,12 +48,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // If regenerating, fetch and verify ownership of the existing policy
-    let existingPolicy: { id: string; version_number: number; framework_versions: Record<string, string> | null } | null = null;
+    const entitlements = await getEntitlements(supabase, user.id);
+    if (!entitlements.subscription) {
+      return NextResponse.json({ error: "Choose a plan before generating policies." }, { status: 403 });
+    }
+
+    // If regenerating, fetch and verify ownership of the existing policy.
+    // Regeneration (creating a new version of an existing policy) is a
+    // Pro+ "versioning" feature.
+    let existingPolicy: { id: string; version_number: number; framework_versions: Record<string, string> | null; client_id: string | null } | null = null;
     if (policyId) {
+      if (!entitlements.hasFeature("versioning")) {
+        return NextResponse.json({ error: "Regenerating policies requires the Pro plan or higher." }, { status: 403 });
+      }
+
       const { data: existing } = await supabase
         .from("policies")
-        .select("id, version_number, framework_versions")
+        .select("id, version_number, framework_versions, client_id")
         .eq("id", policyId)
         .eq("user_id", user.id)
         .single();
@@ -62,12 +75,17 @@ export async function POST(req: NextRequest) {
       existingPolicy = existing;
     }
 
+    const clientId = existingPolicy?.client_id ?? (await getActiveClientId(supabase, user.id));
+    if (!clientId) {
+      return NextResponse.json({ error: "Select or create a client before generating a policy." }, { status: 400 });
+    }
+
     // Get company profile
     const { data: profile } = await supabase
       .from("company_profiles")
       .select("*")
-      .eq("user_id", user.id)
-      .single();
+      .eq("client_id", clientId)
+      .maybeSingle();
 
     const { data: frameworks } = await supabase.from("frameworks").select("id, current_version");
     const frameworkVersionMap: Record<string, string> = {};
@@ -229,6 +247,7 @@ Génère une politique qui adresse directement ces vulnérabilités détectées.
         .from("policies")
         .insert({
           user_id: user.id,
+          client_id: clientId,
           title,
           type: policyType,
           content: documentContent,

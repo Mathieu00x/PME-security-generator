@@ -6,6 +6,7 @@ import { Branding, Policy } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { DownloadPDFButton } from "@/components/policies/DownloadPDFButton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const STATUS_STYLE: Record<string, string> = {
   completed: "bg-green-100 text-green-700",
@@ -13,6 +14,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export function PoliciesClient({ initialPolicies, branding }: { initialPolicies: Policy[]; branding?: Branding }) {
+  const { t, dateLocale } = useLanguage();
   const [policies, setPolicies] = useState<Policy[]>(initialPolicies);
   const [search, setSearch] = useState("");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -24,14 +26,14 @@ export function PoliciesClient({ initialPolicies, branding }: { initialPolicies:
   );
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this policy? This cannot be undone.")) return;
+    if (!confirm(t("policiesList.deleteConfirm"))) return;
     const supabase = createClient();
     const { error } = await supabase.from("policies").delete().eq("id", id);
     if (error) {
-      toast.error("Failed to delete.");
+      toast.error(t("policiesList.deleteFailed"));
     } else {
       setPolicies((prev) => prev.filter((p) => p.id !== id));
-      toast.success("Policy deleted.");
+      toast.success(t("policiesList.deleted"));
     }
     setOpenMenu(null);
   }
@@ -44,12 +46,12 @@ export function PoliciesClient({ initialPolicies, branding }: { initialPolicies:
       .update({ title: renameValue })
       .eq("id", id);
     if (error) {
-      toast.error("Failed to rename.");
+      toast.error(t("policiesList.renameFailed"));
     } else {
       setPolicies((prev) =>
         prev.map((p) => (p.id === id ? { ...p, title: renameValue } : p))
       );
-      toast.success("Renamed.");
+      toast.success(t("policiesList.renamed"));
     }
     setRenamingId(null);
     setRenameValue("");
@@ -63,7 +65,7 @@ export function PoliciesClient({ initialPolicies, branding }: { initialPolicies:
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search policies…"
+            placeholder={t("policiesList.search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -73,17 +75,17 @@ export function PoliciesClient({ initialPolicies, branding }: { initialPolicies:
 
       {/* Table header */}
       <div className="grid grid-cols-12 px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide border-b border-gray-50">
-        <span className="col-span-5">Policy Name</span>
-        <span className="col-span-2">Status</span>
-        <span className="col-span-3">Last Updated</span>
-        <span className="col-span-2 text-right">Actions</span>
+        <span className="col-span-5">{t("policiesList.name")}</span>
+        <span className="col-span-2">{t("policiesList.status")}</span>
+        <span className="col-span-3">{t("policiesList.lastUpdated")}</span>
+        <span className="col-span-2 text-right">{t("policiesList.actions")}</span>
       </div>
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <FileText size={36} className="text-gray-200 mb-3" />
           <p className="text-sm text-gray-400">
-            {search ? "No policies match your search." : "No policies yet."}
+            {search ? t("policiesList.noMatch") : t("policiesList.none")}
           </p>
         </div>
       ) : (
@@ -112,13 +114,13 @@ export function PoliciesClient({ initialPolicies, branding }: { initialPolicies:
                         onChange={(e) => setRenameValue(e.target.value)}
                         className="text-sm px-2 py-0.5 border border-blue-400 rounded focus:outline-none"
                       />
-                      <button type="submit" className="text-xs text-blue-600 font-medium">Save</button>
-                      <button type="button" onClick={() => setRenamingId(null)} className="text-xs text-gray-400">Cancel</button>
+                      <button type="submit" className="text-xs text-blue-600 font-medium">{t("policiesList.save")}</button>
+                      <button type="button" onClick={() => setRenamingId(null)} className="text-xs text-gray-400">{t("policiesList.cancel")}</button>
                     </form>
                   ) : (
                     <p className="text-sm font-medium text-gray-900">{policy.title}</p>
                   )}
-                  <p className="text-xs text-gray-400">Version {policy.version}</p>
+                  <p className="text-xs text-gray-400">{t("policiesList.version", { version: policy.version })}</p>
                 </div>
               </div>
 
@@ -129,7 +131,7 @@ export function PoliciesClient({ initialPolicies, branding }: { initialPolicies:
               </div>
 
               <div className="col-span-3 text-sm text-gray-500">
-                {new Date(policy.updated_at).toLocaleDateString("en-CA")}
+                {new Date(policy.updated_at).toLocaleDateString(dateLocale)}
               </div>
 
               <div className="col-span-2 flex items-center justify-end gap-2 relative">
@@ -156,13 +158,13 @@ export function PoliciesClient({ initialPolicies, branding }: { initialPolicies:
                         }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       >
-                        <Pencil size={13} /> Rename
+                        <Pencil size={13} /> {t("policiesList.rename")}
                       </button>
                       <button
                         onClick={() => handleDelete(policy.id)}
                         className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                       >
-                        <Trash2 size={13} /> Delete
+                        <Trash2 size={13} /> {t("policiesList.delete")}
                       </button>
                     </div>
                   )}

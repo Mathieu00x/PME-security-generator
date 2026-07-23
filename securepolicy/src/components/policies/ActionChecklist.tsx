@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { ActionItem } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const PRIORITY_STYLE: Record<string, string> = {
   high: "bg-red-100 text-red-700",
@@ -9,13 +10,14 @@ const PRIORITY_STYLE: Record<string, string> = {
   low: "bg-blue-100 text-blue-600",
 };
 
-const PRIORITY_LABEL: Record<string, string> = {
-  high: "Haute",
-  medium: "Moyenne",
-  low: "Faible",
+const PRIORITY_KEY: Record<string, string> = {
+  high: "sidebar.actionChecklist.priority.high",
+  medium: "sidebar.actionChecklist.priority.medium",
+  low: "sidebar.actionChecklist.priority.low",
 };
 
 export function ActionChecklist({ actionItems }: { actionItems: ActionItem[] }) {
+  const { t } = useLanguage();
   const [checked, setChecked] = useState<Record<number, boolean>>({});
 
   const toggle = (i: number) =>
@@ -26,9 +28,9 @@ export function ActionChecklist({ actionItems }: { actionItems: ActionItem[] }) 
   return (
     <Card padding="sm">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900">Actions prioritaires</h3>
+        <h3 className="text-sm font-semibold text-gray-900">{t("sidebar.actionChecklist.title")}</h3>
         <span className="text-xs text-gray-400 font-medium">
-          {done}/{actionItems.length} complétées
+          {t("sidebar.actionChecklist.completed", { done, total: actionItems.length })}
         </span>
       </div>
 
@@ -54,7 +56,7 @@ export function ActionChecklist({ actionItems }: { actionItems: ActionItem[] }) 
                 <span
                   className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide ${PRIORITY_STYLE[item.priority]}`}
                 >
-                  {PRIORITY_LABEL[item.priority]}
+                  {t(PRIORITY_KEY[item.priority])}
                 </span>
               </div>
               <p className={`text-xs text-gray-700 leading-relaxed ${checked[i] ? "line-through text-gray-400" : ""}`}>

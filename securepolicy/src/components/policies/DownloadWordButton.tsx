@@ -3,7 +3,7 @@ import { useState } from "react";
 import { FileText, Loader2 } from "lucide-react";
 import { Policy, Branding } from "@/types";
 import { COMPLIANCE_STANDARD_LABELS } from "@/lib/complianceLabels";
-import { ARTIFACT_DEFINITIONS } from "@/lib/artifacts";
+import { ARTIFACT_TITLES_EN } from "@/lib/artifacts";
 import { resolveBranding } from "@/lib/branding";
 
 interface Props {
@@ -381,7 +381,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
 
         auditEvidence.forEach((evidence) => {
           children.push(new Paragraph({
-            children: [new TextRun({ text: ARTIFACT_DEFINITIONS[evidence.type]?.title || evidence.type, bold: true, size: 20, color: brandColorHex })],
+            children: [new TextRun({ text: ARTIFACT_TITLES_EN[evidence.type] || evidence.type, bold: true, size: 20, color: brandColorHex })],
             spacing: { before: 120, after: 40 },
           }));
           children.push(new Paragraph({

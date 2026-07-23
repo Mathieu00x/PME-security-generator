@@ -3,18 +3,22 @@ import { useState } from "react";
 import { FileCheck2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ARTIFACT_ORDER, ARTIFACT_DEFINITIONS } from "@/lib/artifacts";
-import { ArtifactRow, ArtifactType, CompanyProfile, Policy } from "@/types";
-import { resolveBranding, hexToRgb } from "@/lib/branding";
+import { ArtifactRow, ArtifactType, Branding, CompanyProfile, Policy } from "@/types";
+import { hexToRgb } from "@/lib/branding";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function DownloadAuditReportButton({
   companyProfile,
   policies,
   artifacts,
+  branding,
 }: {
   companyProfile: CompanyProfile | null;
   policies: Policy[];
   artifacts: Record<ArtifactType, ArtifactRow[]>;
+  branding: Branding;
 }) {
+  const { t, dateLocale } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   async function handleDownload() {
@@ -28,8 +32,8 @@ export function DownloadAuditReportButton({
       const pageW = 210;
 
       const companyName = companyProfile?.company_name || "Your Company";
-      const generatedOn = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
-      const brandRgb = hexToRgb(resolveBranding(companyProfile).color);
+      const generatedOn = new Date().toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric" });
+      const brandRgb = hexToRgb(branding.color);
 
       // Cover
       doc.setFillColor(brandRgb[0], brandRgb[1], brandRgb[2]);
@@ -37,19 +41,22 @@ export function DownloadAuditReportButton({
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
-      doc.text("Security Audit Package", marginL, 30);
+      doc.text(t("audit.pdf.title"), marginL, 30);
       doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
       doc.text(companyName, marginL, 40);
       doc.setFontSize(9);
-      doc.text(`Generated on ${generatedOn}`, marginL, 47);
+      doc.text(t("audit.pdf.generatedOn", { date: generatedOn }), marginL, 47);
 
       let y = 75;
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(13);
       doc.setFont("helvetica", "bold");
-      doc.text("1. Company Profile", marginL, y);
+      doc.text(t("audit.pdf.companyProfile"), marginL, y);
       y += 8;
+
+      const yes = t("audit.pdf.yes");
+      const no = t("audit.pdf.no");
 
       if (companyProfile) {
         autoTable(doc, {
@@ -57,12 +64,12 @@ export function DownloadAuditReportButton({
           theme: "plain",
           styles: { fontSize: 9, cellPadding: 1.5 },
           body: [
-            ["Industry", companyProfile.industry || "—"],
-            ["Employees", companyProfile.employee_count || "—"],
-            ["Country / Province", `${companyProfile.country || "—"} / ${companyProfile.province || "—"}`],
-            ["MFA Enabled", companyProfile.mfa_enabled ? "Yes" : "No"],
-            ["Backups in Place", companyProfile.has_backups ? "Yes" : "No"],
-            ["IT Department / MSP", companyProfile.has_it_department ? "Yes" : "No"],
+            [t("audit.pdf.industry"), companyProfile.industry || "—"],
+            [t("audit.pdf.employees"), companyProfile.employee_count || "—"],
+            [t("audit.pdf.countryProvince"), `${companyProfile.country || "—"} / ${companyProfile.province || "—"}`],
+            [t("audit.pdf.mfaEnabled"), companyProfile.mfa_enabled ? yes : no],
+            [t("audit.pdf.backupsInPlace"), companyProfile.has_backups ? yes : no],
+            [t("audit.pdf.itDeptMsp"), companyProfile.has_it_department ? yes : no],
           ],
           margin: { left: marginL },
         });
@@ -72,18 +79,18 @@ export function DownloadAuditReportButton({
 
       doc.setFontSize(13);
       doc.setFont("helvetica", "bold");
-      doc.text("2. Active Security Policies", marginL, y);
+      doc.text(t("audit.pdf.activePolicies"), marginL, y);
       y += 8;
 
       autoTable(doc, {
         startY: y,
-        head: [["Policy", "Version", "Status", "Security Score", "Last Updated"]],
+        head: [[t("audit.pdf.policy"), t("audit.pdf.version"), t("audit.pdf.status"), t("audit.pdf.securityScore"), t("audit.pdf.lastUpdated")]],
         body: policies.map((p) => [
           p.title,
           `v${p.version_number || 1}.0`,
           p.status,
           p.security_score ? `${p.security_score.securityScore}/100` : "—",
-          new Date(p.updated_at).toLocaleDateString("en-CA"),
+          new Date(p.updated_at).toLocaleDateString(dateLocale),
         ]),
         headStyles: { fillColor: brandRgb },
         styles: { fontSize: 8, cellPadding: 2.5 },
@@ -105,12 +112,12 @@ export function DownloadAuditReportButton({
 
         doc.setFontSize(13);
         doc.setFont("helvetica", "bold");
-        doc.text(`${sectionNum}. ${definition.title}`, marginL, y);
+        doc.text(`${sectionNum}. ${t(definition.titleKey)}`, marginL, y);
         y += 8;
 
         autoTable(doc, {
           startY: y,
-          head: [definition.columns.map((c) => c.label)],
+          head: [definition.columns.map((c) => t(c.labelKey))],
           body: rows.map((row) => definition.columns.map((c) => row[c.key] || "—")),
           headStyles: { fillColor: brandRgb },
           styles: { fontSize: 8, cellPadding: 2.5 },
@@ -126,14 +133,14 @@ export function DownloadAuditReportButton({
         doc.setPage(i);
         doc.setFontSize(7);
         doc.setTextColor(148, 163, 184);
-        doc.text(`${companyName} — Security Audit Package — CONFIDENTIAL`, marginL, 290);
+        doc.text(t("audit.pdf.footer", { companyName }), marginL, 290);
         doc.text(`${i} / ${totalPages}`, pageW - marginL, 290, { align: "right" });
       }
 
       doc.save(`${companyName.replace(/\s+/g, "_")}_Audit_Package.pdf`);
     } catch (err) {
       console.error("Audit report error:", err);
-      alert("Failed to generate the audit report. Please try again.");
+      alert(t("audit.reportFailed"));
     } finally {
       setLoading(false);
     }
@@ -142,7 +149,7 @@ export function DownloadAuditReportButton({
   return (
     <Button onClick={handleDownload} disabled={loading}>
       {loading ? <Loader2 size={16} className="animate-spin" /> : <FileCheck2 size={16} />}
-      {loading ? "Generating…" : "Generate Full Audit Report"}
+      {loading ? t("audit.generating") : t("audit.generateFullReport")}
     </Button>
   );
 }

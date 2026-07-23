@@ -1,4 +1,6 @@
+"use client";
 import { Shield } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ComplianceMapping {
   NIST?: string[];
@@ -19,6 +21,7 @@ const STANDARDS = [
 ];
 
 export function ComplianceBadges({ mapping }: { mapping: ComplianceMapping }) {
+  const { t } = useLanguage();
   const covered = STANDARDS.filter(
     (s) => mapping[s.key as keyof ComplianceMapping]?.length
   );
@@ -28,7 +31,7 @@ export function ComplianceBadges({ mapping }: { mapping: ComplianceMapping }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <Shield size={13} className="text-gray-400" />
-      <span className="text-xs text-gray-400">Aligné avec :</span>
+      <span className="text-xs text-gray-400">{t("complianceBadges.alignedWith")}</span>
       {covered.map((s) => (
         <span
           key={s.key}

@@ -203,73 +203,71 @@ export default function LandingPage() {
 
       {/* Pricing */}
       <section id="pricing" className="py-24 px-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-2">{t("pricing.title")}</h2>
           <p className="text-gray-500 text-center mb-14">{t("pricing.subtitle")}</p>
 
-          <div className="grid grid-cols-2 gap-6">
-            {/* Consultant */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-8 flex flex-col">
-              <div className="mb-6">
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">{t("pricing.consultant.name")}</p>
-                <div className="flex items-end gap-1 mb-2">
-                  <span className="text-4xl font-extrabold text-gray-900">{t("pricing.consultant.price")}</span>
-                  <span className="text-gray-400 mb-1">{t("pricing.consultant.period")}</span>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {(["starter", "pro", "agency", "beta"] as const).map((planKey) => {
+              const isPopular = planKey === "pro";
+              const isBeta = planKey === "beta";
+              return (
+                <div
+                  key={planKey}
+                  className={`relative flex flex-col rounded-2xl p-6 ${
+                    isPopular
+                      ? "bg-gray-900 text-white"
+                      : isBeta
+                      ? "bg-white border-2 border-dashed border-blue-300"
+                      : "bg-white border border-gray-200"
+                  }`}
+                >
+                  {isPopular && (
+                    <span className="absolute -top-3 left-6 bg-blue-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+                      {t("pricing.pro.badge")}
+                    </span>
+                  )}
+                  {isBeta && (
+                    <span className="absolute -top-3 left-6 bg-blue-50 text-blue-700 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                      {t("pricing.beta.badge")}
+                    </span>
+                  )}
+
+                  <p className={`text-sm font-semibold uppercase tracking-wide mb-1 ${isPopular ? "text-blue-300" : "text-gray-500"}`}>
+                    {t(`pricing.${planKey}.name`)}
+                  </p>
+                  <div className="flex items-end gap-1 mb-2">
+                    <span className="text-3xl font-extrabold">{t(`pricing.${planKey}.price`)}</span>
+                    <span className={`text-sm mb-0.5 ${isPopular ? "text-gray-300" : "text-gray-400"}`}>
+                      {t(`pricing.${planKey}.period`)}
+                    </span>
+                  </div>
+                  <p className={`text-xs mb-5 ${isPopular ? "text-gray-300" : "text-gray-500"}`}>
+                    {t(`pricing.${planKey}.desc`)}
+                  </p>
+
+                  <ul className="flex flex-col gap-2.5 mb-6 flex-1">
+                    {(["f1", "f2", "f3", "f4", "f5"] as const).map((f) => (
+                      <li key={f} className={`flex items-start gap-2 text-xs ${isPopular ? "text-gray-200" : "text-gray-700"}`}>
+                        <Check size={13} className={`flex-shrink-0 mt-0.5 ${isPopular ? "text-blue-300" : "text-blue-600"}`} />
+                        {t(`pricing.${planKey}.${f}`)}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    href="/register"
+                    className={`block text-center px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                      isPopular ? "bg-white text-gray-900 hover:bg-gray-100" : "bg-blue-600 text-white hover:bg-blue-700"
+                    }`}
+                  >
+                    {t(`pricing.${planKey}.cta`)}
+                  </Link>
                 </div>
-                <p className="text-sm text-gray-500">{t("pricing.consultant.desc")}</p>
-              </div>
-
-              <ul className="flex flex-col gap-3 mb-8 flex-1">
-                {(["f1","f2","f3","f4","f5","f6"] as const).map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-gray-700">
-                    <Check size={15} className="text-blue-600 flex-shrink-0" />
-                    {t(`pricing.consultant.${f}`)}
-                  </li>
-                ))}
-              </ul>
-
-              <Link
-                href="/register"
-                className="block text-center px-6 py-3 border-2 border-blue-600 text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-colors"
-              >
-                {t("pricing.consultant.cta")}
-              </Link>
-            </div>
-
-            {/* Agency */}
-            <div className="bg-blue-600 rounded-2xl p-8 flex flex-col relative overflow-hidden">
-              <div className="absolute top-4 right-4">
-                <span className="text-xs font-bold bg-white text-blue-600 px-2.5 py-1 rounded-full">
-                  {t("pricing.agency.badge")}
-                </span>
-              </div>
-
-              <div className="mb-6">
-                <p className="text-sm font-semibold text-blue-200 uppercase tracking-wide mb-1">{t("pricing.agency.name")}</p>
-                <div className="flex items-end gap-1 mb-2">
-                  <span className="text-4xl font-extrabold text-white">{t("pricing.agency.price")}</span>
-                  <span className="text-blue-200 mb-1">{t("pricing.agency.period")}</span>
-                </div>
-                <p className="text-sm text-blue-100">{t("pricing.agency.desc")}</p>
-              </div>
-
-              <ul className="flex flex-col gap-3 mb-8 flex-1">
-                {(["f1","f2","f3","f4","f5","f6"] as const).map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-white">
-                    <Check size={15} className="text-blue-200 flex-shrink-0" />
-                    {t(`pricing.agency.${f}`)}
-                  </li>
-                ))}
-              </ul>
-
-              <Link
-                href="/register"
-                className="block text-center px-6 py-3 bg-white text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-colors"
-              >
-                {t("pricing.agency.cta")}
-              </Link>
-            </div>
+              );
+            })}
           </div>
+          <p className="text-center text-xs text-gray-400 mt-8">{t("pricing.annualNote")}</p>
         </div>
       </section>
 

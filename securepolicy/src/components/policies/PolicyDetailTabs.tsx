@@ -5,10 +5,11 @@ import { FileText, Clock } from "lucide-react";
 import { PolicyViewer } from "@/components/policies/PolicyViewer";
 import { PolicyVersionHistory } from "@/components/policies/PolicyVersionHistory";
 import { PolicyVersion } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const TABS = [
-  { id: "document", label: "Document", icon: FileText },
-  { id: "history", label: "Version History", icon: Clock },
+  { id: "document", labelKey: "tabs.document", icon: FileText },
+  { id: "history", labelKey: "tabs.versionHistory", icon: Clock },
 ] as const;
 
 export function PolicyDetailTabs({
@@ -16,18 +17,22 @@ export function PolicyDetailTabs({
   content,
   currentVersionNumber,
   versions,
+  showHistory = true,
 }: {
   policyId: string;
   content: string;
   currentVersionNumber: number;
   versions: PolicyVersion[];
+  showHistory?: boolean;
 }) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]["id"]>("document");
+  const visibleTabs = showHistory ? TABS : TABS.filter((t) => t.id !== "history");
 
   return (
     <div>
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-4 w-fit">
-        {TABS.map(({ id, label, icon: Icon }) => (
+        {visibleTabs.map(({ id, labelKey, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
@@ -38,7 +43,7 @@ export function PolicyDetailTabs({
             }`}
           >
             <Icon size={13} />
-            {label}
+            {t(labelKey)}
             {id === "history" && versions.length > 0 && (
               <span className="text-xs text-gray-400">({versions.length})</span>
             )}

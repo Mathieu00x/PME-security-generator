@@ -6,9 +6,11 @@ import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
 import toast from "react-hot-toast";
 
 export default function RegisterPage() {
+  const { t } = useLanguage();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -23,11 +25,11 @@ export default function RegisterPage() {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match.");
+      toast.error(t("auth.passwordMismatch"));
       return;
     }
     if (password.length < 8) {
-      toast.error("Password must be at least 8 characters.");
+      toast.error(t("auth.passwordTooShort"));
       return;
     }
 
@@ -65,15 +67,13 @@ export default function RegisterPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Check your email</h2>
-            <p className="text-gray-500 text-sm">
-              We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
-            </p>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">{t("auth.checkEmail")}</h2>
+            <p className="text-gray-500 text-sm">{t("auth.confirmationSent", { email })}</p>
             <Link
               href="/login"
               className="mt-6 inline-block text-sm text-blue-600 font-medium hover:underline"
             >
-              Back to Sign In
+              {t("auth.backToSignIn")}
             </Link>
           </div>
         </div>
@@ -88,10 +88,8 @@ export default function RegisterPage() {
           <div className="flex justify-center mb-4">
             <Logo size="lg" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Create Your Account</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Start generating professional security policies in minutes.
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">{t("auth.register.title")}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t("auth.register.subtitle")}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
@@ -99,7 +97,7 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 id="firstName"
-                label="First Name"
+                label={t("auth.firstName")}
                 placeholder="First name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
@@ -107,7 +105,7 @@ export default function RegisterPage() {
               />
               <Input
                 id="lastName"
-                label="Last Name"
+                label={t("auth.lastName")}
                 placeholder="Last name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -118,7 +116,7 @@ export default function RegisterPage() {
             <Input
               id="email"
               type="email"
-              label="Email"
+              label={t("auth.email")}
               placeholder="name@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -127,7 +125,7 @@ export default function RegisterPage() {
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="password" className="text-sm font-medium text-gray-700">
-                Password
+                {t("auth.password")}
               </label>
               <div className="relative">
                 <input
@@ -147,7 +145,7 @@ export default function RegisterPage() {
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="confirm" className="text-sm font-medium text-gray-700">
-                Confirm Password
+                {t("auth.confirmPassword")}
               </label>
               <div className="relative">
                 <input
@@ -166,22 +164,22 @@ export default function RegisterPage() {
             </div>
 
             <p className="text-xs text-gray-400">
-              By creating an account, you agree to our{" "}
-              <Link href="/terms" className="text-blue-600 hover:underline">Terms of Service</Link>{" "}
-              and{" "}
-              <Link href="/privacy" className="text-blue-600 hover:underline">Privacy Policy</Link>.
+              {t("auth.termsAgree")}{" "}
+              <Link href="/terms" className="text-blue-600 hover:underline">{t("auth.termsOfService")}</Link>{" "}
+              {t("auth.and")}{" "}
+              <Link href="/privacy" className="text-blue-600 hover:underline">{t("auth.privacyPolicy")}</Link>.
             </p>
 
             <Button type="submit" loading={loading} size="lg" className="w-full">
-              Create Account
+              {t("auth.createAccount")}
             </Button>
           </form>
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-6">
-          Already have an account?{" "}
+          {t("auth.alreadyHaveAccount")}{" "}
           <Link href="/login" className="text-blue-600 font-medium hover:underline">
-            Sign in
+            {t("auth.signInLink")}
           </Link>
         </p>
       </div>

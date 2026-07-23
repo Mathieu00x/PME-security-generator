@@ -10,8 +10,25 @@ export type PolicyType =
   | "acceptable-use"
   | "remote-work";
 
+export interface Client {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccountSettings {
+  user_id: string;
+  brand_name?: string;
+  brand_color?: string;
+  brand_logo_url?: string;
+  updated_at?: string;
+}
+
 export interface CompanyProfile {
   id?: string;
+  client_id?: string;
   user_id?: string;
   company_name: string;
   industry: string;
@@ -29,14 +46,12 @@ export interface CompanyProfile {
   has_backups: boolean;
   has_it_department: boolean;
   uses_personal_devices: boolean;
-  brand_name?: string;
-  brand_color?: string;
-  brand_logo_url?: string;
 }
 
 export interface Policy {
   id: string;
   user_id: string;
+  client_id?: string;
   title: string;
   type: PolicyType;
   content: string;
@@ -150,6 +165,7 @@ export interface ArtifactRow {
 export interface AuditArtifact {
   id: string;
   user_id: string;
+  client_id?: string;
   type: ArtifactType;
   items: ArtifactRow[];
   created_at: string;
@@ -208,6 +224,7 @@ export interface ScanFinding {
 export interface AttackSurfaceReport {
   id: string;
   user_id: string;
+  client_id?: string;
   domain: string;
   created_at: string;
   risk_score: number;
@@ -224,5 +241,43 @@ export interface Framework {
   name: string;
   current_version: string;
   changelog?: string;
+  updated_at: string;
+}
+
+export type PlanFeature =
+  | "branding"
+  | "versioning"
+  | "confluence_notion"
+  | "white_label"
+  | "multi_user"
+  | "priority_support";
+
+export type PlanId = "starter" | "pro" | "agency" | "beta";
+
+export interface Plan {
+  id: PlanId;
+  name: string;
+  monthly_price_cents: number;
+  annual_price_cents: number;
+  client_limit: number | null;
+  features: PlanFeature[];
+  is_public: boolean;
+  beta_cutoff_at: string | null;
+  sort_order: number;
+}
+
+export type BillingInterval = "monthly" | "annual";
+export type SubscriptionStatus = "active" | "canceled" | "expired";
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  plan_id: PlanId;
+  billing_interval: BillingInterval;
+  status: SubscriptionStatus;
+  beta_expires_at?: string;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  created_at: string;
   updated_at: string;
 }

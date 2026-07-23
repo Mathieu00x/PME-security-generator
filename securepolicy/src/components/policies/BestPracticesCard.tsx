@@ -2,14 +2,16 @@
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { BestPractices } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function BestPracticesCard({ bestPractices }: { bestPractices: BestPractices }) {
+  const { t } = useLanguage();
   return (
     <Card padding="sm">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">Bonnes pratiques</h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-3">{t("sidebar.bestPractices.title")}</h3>
 
       <div className="mb-3">
-        <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">✅ À faire</p>
+        <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">{t("sidebar.bestPractices.dos")}</p>
         <ul className="flex flex-col gap-1.5">
           {bestPractices.dos.map((item, i) => (
             <li key={i} className="flex items-start gap-2">
@@ -21,7 +23,7 @@ export function BestPracticesCard({ bestPractices }: { bestPractices: BestPracti
       </div>
 
       <div className="border-t border-gray-100 pt-3">
-        <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">❌ À éviter</p>
+        <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">{t("sidebar.bestPractices.donts")}</p>
         <ul className="flex flex-col gap-1.5">
           {bestPractices.donts.map((item, i) => (
             <li key={i} className="flex items-start gap-2">

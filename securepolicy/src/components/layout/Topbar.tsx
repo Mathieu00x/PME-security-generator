@@ -5,25 +5,28 @@ import { useRouter } from "next/navigation";
 import { Bell, AlertTriangle, RefreshCw, CheckCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { AppNotification } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { LangSwitcher } from "@/components/ui/LangSwitcher";
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
   framework_outdated: <RefreshCw size={14} className="text-amber-600" />,
   gap_risk: <AlertTriangle size={14} className="text-red-500" />,
 };
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: (key: string, params?: Record<string, string | number>) => string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("time.justNow");
+  if (mins < 60) return t("time.minutesAgo", { n: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("time.hoursAgo", { n: hours });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return t("time.daysAgo", { n: days });
 }
 
 export function Topbar({ initialNotifications }: { initialNotifications: AppNotification[] }) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState(initialNotifications);
   const [open, setOpen] = useState(false);
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -46,7 +49,9 @@ export function Topbar({ initialNotifications }: { initialNotifications: AppNoti
   }
 
   return (
-    <div className="relative">
+    <div className="flex items-center gap-2">
+      <LangSwitcher />
+      <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
         className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -62,20 +67,20 @@ export function Topbar({ initialNotifications }: { initialNotifications: AppNoti
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-11 w-80 bg-white border border-gray-100 rounded-xl shadow-lg z-20 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-              <p className="text-sm font-semibold text-gray-900">Notifications</p>
+              <p className="text-sm font-semibold text-gray-900">{t("dash.topbar.notifications")}</p>
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllRead}
                   className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
                 >
-                  <CheckCheck size={12} /> Mark all read
+                  <CheckCheck size={12} /> {t("dash.topbar.markAllRead")}
                 </button>
               )}
             </div>
 
             <div className="max-h-96 overflow-y-auto">
               {notifications.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-8">You&apos;re all caught up.</p>
+                <p className="text-sm text-gray-400 text-center py-8">{t("dash.topbar.caughtUp")}</p>
               ) : (
                 notifications.map((n) => (
                   <button
@@ -91,7 +96,7 @@ export function Topbar({ initialNotifications }: { initialNotifications: AppNoti
                         {n.title}
                       </p>
                       {n.body && <p className="text-xs text-gray-400 mt-0.5">{n.body}</p>}
-                      <p className="text-[10px] text-gray-300 mt-1">{timeAgo(n.created_at)}</p>
+                      <p className="text-[10px] text-gray-300 mt-1">{timeAgo(n.created_at, t)}</p>
                     </div>
                     {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 flex-shrink-0 mt-1.5" />}
                   </button>
@@ -101,6 +106,7 @@ export function Topbar({ initialNotifications }: { initialNotifications: AppNoti
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

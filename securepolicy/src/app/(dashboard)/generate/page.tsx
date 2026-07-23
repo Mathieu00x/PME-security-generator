@@ -7,19 +7,20 @@ import { Card } from "@/components/ui/Card";
 import { AttackSurfaceReport, PolicyType } from "@/types";
 import { POLICY_QUESTIONS, GENERATION_REASONS } from "@/lib/prompts";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
 import toast from "react-hot-toast";
 
 const POLICY_TYPES: {
   type: PolicyType;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
   icon: React.ReactNode;
 }[] = [
-  { type: "password", label: "Password Policy", description: "Create a strong password policy for your team.", icon: <Lock size={22} /> },
-  { type: "backup", label: "Backup Policy", description: "Define your data backup rules and recovery objectives.", icon: <HardDrive size={22} /> },
-  { type: "incident-response", label: "Incident Response Plan", description: "Prepare your team for security incidents.", icon: <AlertTriangle size={22} /> },
-  { type: "acceptable-use", label: "Acceptable Use Policy", description: "Set the rules for acceptable technology usage.", icon: <Monitor size={22} /> },
-  { type: "remote-work", label: "Remote Work Policy", description: "Secure your remote workforce effectively.", icon: <Wifi size={22} /> },
+  { type: "password", labelKey: "scan.policy.password.label", descKey: "generate.policy.password.desc", icon: <Lock size={22} /> },
+  { type: "backup", labelKey: "scan.policy.backup.label", descKey: "generate.policy.backup.desc", icon: <HardDrive size={22} /> },
+  { type: "incident-response", labelKey: "scan.policy.incidentResponse.label", descKey: "generate.policy.incidentResponse.desc", icon: <AlertTriangle size={22} /> },
+  { type: "acceptable-use", labelKey: "scan.policy.acceptableUse.label", descKey: "generate.policy.acceptableUse.desc", icon: <Monitor size={22} /> },
+  { type: "remote-work", labelKey: "scan.policy.remoteWork.label", descKey: "generate.policy.remoteWork.desc", icon: <Wifi size={22} /> },
 ];
 
 export default function GeneratePage() {
@@ -33,6 +34,7 @@ export default function GeneratePage() {
 const KNOWN_POLICY_TYPES: PolicyType[] = ["password", "backup", "incident-response", "acceptable-use", "remote-work"];
 
 function GeneratePageInner() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const regenerateId = searchParams.get("regenerate");
@@ -68,7 +70,7 @@ function GeneratePageInner() {
         .single();
 
       if (!policy) {
-        toast.error("Policy not found.");
+        toast.error(t("generate.policyNotFound"));
         setStep("select");
         return;
       }
@@ -154,13 +156,13 @@ function GeneratePageInner() {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Generation failed");
+        throw new Error(err.error || t("generate.generationFailed"));
       }
 
       const { policyId: newPolicyId } = await res.json();
       router.push(`/policies/${newPolicyId}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Something went wrong.";
+      const message = err instanceof Error ? err.message : t("generate.genericError");
       toast.error(message);
       setStep("questionnaire");
       setGenerating(false);
@@ -173,7 +175,7 @@ function GeneratePageInner() {
         <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
           <Sparkles size={28} className="text-blue-600 animate-pulse" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Loading policy…</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">{t("generate.loadingPolicy")}</h2>
       </div>
     );
   }
@@ -184,15 +186,16 @@ function GeneratePageInner() {
         <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
           <Sparkles size={28} className="text-blue-600 animate-pulse" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Generating your policy…</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">{t("generate.generatingTitle")}</h2>
         <p className="text-gray-500 text-sm">
-          Our AI is crafting a professional{" "}
-          {POLICY_TYPES.find((p) => p.type === selectedType)?.label.toLowerCase()} tailored to your business.
+          {t("generate.generatingDesc", {
+            type: t(POLICY_TYPES.find((p) => p.type === selectedType)?.labelKey ?? "").toLowerCase(),
+          })}
         </p>
         <div className="w-48 h-1.5 bg-gray-100 rounded-full mt-8 overflow-hidden">
           <div className="h-full bg-blue-600 rounded-full animate-[loading_2s_ease-in-out_infinite]" style={{ width: "60%" }} />
         </div>
-        <p className="text-xs text-gray-400 mt-3">This usually takes 15–30 seconds</p>
+        <p className="text-xs text-gray-400 mt-3">{t("generate.generatingTime")}</p>
       </div>
     );
   }
@@ -200,14 +203,12 @@ function GeneratePageInner() {
   const scanBanner = fromScan && (
     <div className="flex items-start gap-2.5 mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
       <Radar size={15} className="text-blue-600 flex-shrink-0 mt-0.5" />
-      <p className="text-xs text-blue-800">
-        Ce type de politique a été recommandé suite au diagnostic de votre domaine.
-      </p>
+      <p className="text-xs text-blue-800">{t("generate.scanBanner")}</p>
     </div>
   );
 
   if (step === "why" && selectedType) {
-    const selectedLabel = POLICY_TYPES.find((p) => p.type === selectedType)?.label;
+    const selectedLabel = t(POLICY_TYPES.find((p) => p.type === selectedType)?.labelKey ?? "");
     return (
       <div className="max-w-xl mx-auto">
         {scanBanner}
@@ -218,12 +219,8 @@ function GeneratePageInner() {
               {selectedLabel}
             </p>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">
-            Why are you generating this policy?
-          </h2>
-          <p className="text-sm text-gray-500 mb-6">
-            This helps our AI adapt the tone and sections to your specific context.
-          </p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">{t("generate.why.title")}</h2>
+          <p className="text-sm text-gray-500 mb-6">{t("generate.why.subtitle")}</p>
 
           <div className="flex flex-col gap-2">
             {GENERATION_REASONS.map((r) => (
@@ -243,7 +240,7 @@ function GeneratePageInner() {
                   onChange={() => setGenerationReason(r.value)}
                   className="accent-blue-600"
                 />
-                <span className="text-sm text-gray-800">{r.label}</span>
+                <span className="text-sm text-gray-800">{t(r.labelKey)}</span>
               </label>
             ))}
           </div>
@@ -251,10 +248,10 @@ function GeneratePageInner() {
           <div className="flex items-center justify-between mt-8">
             <Button variant="outline" onClick={() => setStep("select")}>
               <ChevronLeft size={16} />
-              Back
+              {t("generate.back")}
             </Button>
             <Button onClick={() => setStep("questionnaire")} disabled={!generationReason}>
-              Continue <ChevronRight size={16} />
+              {t("generate.continue")} <ChevronRight size={16} />
             </Button>
           </div>
         </Card>
@@ -271,7 +268,7 @@ function GeneratePageInner() {
         {scanBanner}
         <div className="mb-6">
           <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-            <span>Step {currentQ + 1} of {questions.length}</span>
+            <span>{t("generate.stepOf", { current: currentQ + 1, total: questions.length })}</span>
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -284,7 +281,7 @@ function GeneratePageInner() {
 
         <Card>
           <p className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-3">
-            {POLICY_TYPES.find((p) => p.type === selectedType)?.label}
+            {t(POLICY_TYPES.find((p) => p.type === selectedType)?.labelKey ?? "")}
           </p>
           <h2 className="text-lg font-semibold text-gray-900 mb-6">{q.question}</h2>
 
@@ -318,7 +315,7 @@ function GeneratePageInner() {
               type="text"
               value={currentAnswer}
               onChange={(e) => handleAnswer(e.target.value)}
-              placeholder="Type your answer…"
+              placeholder={t("generate.answerPlaceholder")}
               className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           )}
@@ -335,13 +332,13 @@ function GeneratePageInner() {
               }}
             >
               <ChevronLeft size={16} />
-              Back
+              {t("generate.back")}
             </Button>
             <Button onClick={handleNext} disabled={!currentAnswer}>
               {currentQ < questions.length - 1 ? (
-                <>Next <ChevronRight size={16} /></>
+                <>{t("generate.next")} <ChevronRight size={16} /></>
               ) : (
-                <>{policyId ? "Regenerate" : "Generate"} <Sparkles size={16} /></>
+                <>{policyId ? t("generate.regenerate") : t("generate.generate")} <Sparkles size={16} /></>
               )}
             </Button>
           </div>
@@ -353,12 +350,12 @@ function GeneratePageInner() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Generate Policy</h1>
-        <p className="text-gray-500 text-sm mt-1">Choose the type of policy you want to generate.</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t("generate.pageTitle")}</h1>
+        <p className="text-gray-500 text-sm mt-1">{t("generate.pageSubtitle")}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        {POLICY_TYPES.map(({ type, label, description, icon }) => (
+        {POLICY_TYPES.map(({ type, labelKey, descKey, icon }) => (
           <button
             key={type}
             onClick={() => handleSelectType(type)}
@@ -369,8 +366,8 @@ function GeneratePageInner() {
                 {icon}
               </div>
               <div>
-                <p className="font-semibold text-gray-900">{label}</p>
-                <p className="text-sm text-gray-500 mt-0.5">{description}</p>
+                <p className="font-semibold text-gray-900">{t(labelKey)}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{t(descKey)}</p>
               </div>
             </div>
             <ChevronRight size={18} className="text-gray-300 group-hover:text-blue-400 transition-colors" />

@@ -4,7 +4,7 @@
 
 import { SecurityScore } from "@/types";
 import { COMPLIANCE_STANDARD_LABELS } from "@/lib/complianceLabels";
-import { ARTIFACT_DEFINITIONS } from "@/lib/artifacts";
+import { ARTIFACT_TITLES_EN } from "@/lib/artifacts";
 
 type NotionRichText = { type: "text"; text: { content: string } };
 type NotionBlock = {
@@ -100,7 +100,7 @@ export function securityScoreToNotionBlocks(score: SecurityScore): NotionBlock[]
     blocks.push(block("heading_1", richText("Audit Evidence")));
     blocks.push(block("paragraph", richText("Registers you should maintain to demonstrate compliance with this policy.")));
     score.auditEvidence.forEach((evidence) => {
-      const label = ARTIFACT_DEFINITIONS[evidence.type]?.title || evidence.type;
+      const label = ARTIFACT_TITLES_EN[evidence.type] || evidence.type;
       blocks.push(block("bulleted_list_item", richText(`${label} — ${evidence.reason}`)));
     });
   }
@@ -223,7 +223,7 @@ export function securityScoreToConfluenceStorage(score: SecurityScore): string {
     html.push("<p>Registers you should maintain to demonstrate compliance with this policy.</p>");
     html.push("<ul>");
     score.auditEvidence.forEach((evidence) => {
-      const label = ARTIFACT_DEFINITIONS[evidence.type]?.title || evidence.type;
+      const label = ARTIFACT_TITLES_EN[evidence.type] || evidence.type;
       html.push(`<li><strong>${escapeHtml(label)}</strong> — ${escapeHtml(evidence.reason)}</li>`);
     });
     html.push("</ul>");

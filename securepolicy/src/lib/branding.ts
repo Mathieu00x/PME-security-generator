@@ -1,15 +1,22 @@
-import { Branding, CompanyProfile } from "@/types";
+import { AccountSettings, Branding } from "@/types";
 
 const DEFAULT_NAME = "SecurePilot";
 const DEFAULT_COLOR = "#2563EB";
 
+// `entitled` gates the "branding" plan feature: accounts without it always
+// get default SecurePilot branding on exports, even if a brand_* row exists
+// from a previous higher-tier subscription.
 export function resolveBranding(
-  profile?: Pick<CompanyProfile, "brand_name" | "brand_color" | "brand_logo_url"> | null
+  settings?: Pick<AccountSettings, "brand_name" | "brand_color" | "brand_logo_url"> | null,
+  entitled = true
 ): Branding {
+  if (!entitled || !settings) {
+    return { name: DEFAULT_NAME, color: DEFAULT_COLOR };
+  }
   return {
-    name: profile?.brand_name?.trim() || DEFAULT_NAME,
-    color: profile?.brand_color?.trim() || DEFAULT_COLOR,
-    logoUrl: profile?.brand_logo_url?.trim() || undefined,
+    name: settings.brand_name?.trim() || DEFAULT_NAME,
+    color: settings.brand_color?.trim() || DEFAULT_COLOR,
+    logoUrl: settings.brand_logo_url?.trim() || undefined,
   };
 }
 

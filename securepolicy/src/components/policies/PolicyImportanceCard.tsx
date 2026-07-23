@@ -1,6 +1,8 @@
+"use client";
 import { Users } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { PolicyImportance } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const REQUESTER_ICONS: Record<string, string> = {
   "cyber insurer": "🛡️",
@@ -21,16 +23,17 @@ function getIcon(label: string): string {
 }
 
 export function PolicyImportanceCard({ importance }: { importance: PolicyImportance }) {
+  const { t } = useLanguage();
   return (
     <Card padding="sm">
       <h3 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-1.5">
         <Users size={14} className="text-blue-500" />
-        Why this policy matters
+        {t("sidebar.policyImportance.title")}
       </h3>
       <p className="text-xs text-gray-500 leading-relaxed mb-3">{importance.businessValue}</p>
 
       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
-        Often required by
+        {t("sidebar.policyImportance.oftenRequired")}
       </p>
       <ul className="flex flex-col gap-1.5">
         {importance.requestedBy.map((requester, i) => (

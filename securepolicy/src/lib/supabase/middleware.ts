@@ -38,7 +38,8 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/scan") ||
     request.nextUrl.pathname.startsWith("/policies") ||
     request.nextUrl.pathname.startsWith("/generate") ||
-    request.nextUrl.pathname.startsWith("/company-profile") ||
+    request.nextUrl.pathname.startsWith("/clients") ||
+    request.nextUrl.pathname.startsWith("/choose-plan") ||
     request.nextUrl.pathname.startsWith("/security-score") ||
     request.nextUrl.pathname.startsWith("/audit-evidence") ||
     request.nextUrl.pathname.startsWith("/frameworks") ||

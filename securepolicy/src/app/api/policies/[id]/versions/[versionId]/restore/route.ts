@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getEntitlements } from "@/lib/entitlements";
 
 export async function POST(
   _req: NextRequest,
@@ -10,6 +11,11 @@ export async function POST(
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const entitlements = await getEntitlements(supabase, user.id);
+  if (!entitlements.hasFeature("versioning")) {
+    return NextResponse.json({ error: "Restoring versions requires the Pro plan or higher." }, { status: 403 });
   }
 
   const { data: policy } = await supabase

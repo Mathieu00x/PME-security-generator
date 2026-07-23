@@ -306,3 +306,233 @@ create policy "Users can manage their own attack surface reports"
 
 create index if not exists attack_surface_reports_user_created_idx
   on public.attack_surface_reports (user_id, created_at desc);
+
+-- ============================================================
+-- Multi-client accounts
+-- A consultant/agency account (auth.users row) can now manage several
+-- clients. `company_profiles` becomes 1:1 with a `client` instead of 1:1
+-- with a user. MSP branding is account-level (applies to every client's
+-- exports uniformly) and moves out of company_profiles into
+-- account_settings.
+-- ============================================================
+
+create table if not exists public.clients (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  name text not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.clients enable row level security;
+
+drop policy if exists "Users can manage their own clients" on public.clients;
+create policy "Users can manage their own clients"
+  on public.clients for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop trigger if exists update_clients_updated_at on public.clients;
+create trigger update_clients_updated_at
+  before update on public.clients
+  for each row execute function update_updated_at();
+
+create table if not exists public.account_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  brand_name text,
+  brand_color text,
+  brand_logo_url text,
+  updated_at timestamptz default now()
+);
+
+alter table public.account_settings enable row level security;
+
+drop trigger if exists update_account_settings_updated_at on public.account_settings;
+create trigger update_account_settings_updated_at
+  before update on public.account_settings
+  for each row execute function update_updated_at();
+
+-- Migrate any existing per-user branding into account_settings before it's
+-- dropped from company_profiles below.
+insert into public.account_settings (user_id, brand_name, brand_color, brand_logo_url)
+select user_id, brand_name, brand_color, brand_logo_url
+from public.company_profiles
+where user_id is not null
+  and (brand_name is not null or brand_color is not null or brand_logo_url is not null)
+on conflict (user_id) do nothing;
+
+-- Link company_profiles to a client (1 profile per client instead of 1 per user)
+alter table public.company_profiles add column if not exists client_id uuid references public.clients(id) on delete cascade;
+
+with new_clients as (
+  insert into public.clients (user_id, name)
+  select cp.user_id, coalesce(nullif(cp.company_name, ''), 'Default Client')
+  from public.company_profiles cp
+  where cp.client_id is null
+  returning id, user_id
+)
+update public.company_profiles cp
+set client_id = nc.id
+from new_clients nc
+where cp.user_id = nc.user_id and cp.client_id is null;
+
+alter table public.company_profiles drop constraint if exists company_profiles_user_id_key;
+alter table public.company_profiles drop constraint if exists company_profiles_client_id_key;
+alter table public.company_profiles add constraint company_profiles_client_id_key unique (client_id);
+
+alter table public.company_profiles drop column if exists brand_name;
+alter table public.company_profiles drop column if exists brand_color;
+alter table public.company_profiles drop column if exists brand_logo_url;
+
+-- Backfill helper: ensure every user who already has policies/scans/registers
+-- but no client yet gets a "Default Client" so nothing becomes orphaned.
+insert into public.clients (user_id, name)
+select distinct p.user_id, 'Default Client'
+from public.policies p
+where not exists (select 1 from public.clients c where c.user_id = p.user_id);
+
+insert into public.clients (user_id, name)
+select distinct r.user_id, 'Default Client'
+from public.attack_surface_reports r
+where not exists (select 1 from public.clients c where c.user_id = r.user_id);
+
+insert into public.clients (user_id, name)
+select distinct a.user_id, 'Default Client'
+from public.audit_artifacts a
+where not exists (select 1 from public.clients c where c.user_id = a.user_id);
+
+-- policies.client_id
+alter table public.policies add column if not exists client_id uuid references public.clients(id) on delete cascade;
+update public.policies p
+set client_id = (select id from public.clients c where c.user_id = p.user_id order by c.created_at asc limit 1)
+where p.client_id is null;
+
+-- attack_surface_reports.client_id
+alter table public.attack_surface_reports add column if not exists client_id uuid references public.clients(id) on delete cascade;
+update public.attack_surface_reports r
+set client_id = (select id from public.clients c where c.user_id = r.user_id order by c.created_at asc limit 1)
+where r.client_id is null;
+
+-- audit_artifacts.client_id (register uniqueness moves from per-user to per-client)
+alter table public.audit_artifacts add column if not exists client_id uuid references public.clients(id) on delete cascade;
+update public.audit_artifacts a
+set client_id = (select id from public.clients c where c.user_id = a.user_id order by c.created_at asc limit 1)
+where a.client_id is null;
+
+alter table public.audit_artifacts drop constraint if exists audit_artifacts_user_id_type_key;
+alter table public.audit_artifacts drop constraint if exists audit_artifacts_client_id_type_key;
+alter table public.audit_artifacts add constraint audit_artifacts_client_id_type_key unique (client_id, type);
+
+-- ============================================================
+-- Plans & subscriptions
+-- Selecting a plan is mandatory right after signup (enforced in the app,
+-- not here) — `subscriptions` has no default row, so a user with none is
+-- treated as "not onboarded yet". Paid plans go through Stripe Checkout
+-- (src/app/api/subscriptions/checkout) and are only ever activated by the
+-- Stripe webhook (src/app/api/webhooks/stripe) on payment confirmation; the
+-- free beta plan is the only one /api/subscriptions can activate directly.
+-- ============================================================
+
+create table if not exists public.plans (
+  id text primary key,
+  name text not null,
+  monthly_price_cents integer not null,
+  annual_price_cents integer not null,
+  client_limit integer,
+  features jsonb not null default '[]'::jsonb,
+  is_public boolean not null default true,
+  beta_cutoff_at timestamptz,
+  sort_order integer not null default 0
+);
+
+alter table public.plans enable row level security;
+
+drop policy if exists "Anyone can read plans" on public.plans;
+create policy "Anyone can read plans"
+  on public.plans for select
+  using (true);
+
+insert into public.plans (id, name, monthly_price_cents, annual_price_cents, client_limit, features, is_public, beta_cutoff_at, sort_order)
+values
+  ('starter', 'Starter', 5900, 59000, 1, '[]'::jsonb, true, null, 1),
+  ('pro', 'Pro', 14900, 149000, 5, '["branding","versioning","confluence_notion"]'::jsonb, true, null, 2),
+  ('agency', 'Agency', 29900, 299000, null, '["branding","versioning","confluence_notion","white_label","multi_user","priority_support"]'::jsonb, true, null, 3),
+  ('beta', 'Beta', 0, 0, null, '["branding","versioning","confluence_notion","white_label","multi_user","priority_support"]'::jsonb, true, now() + interval '90 days', 0)
+on conflict (id) do update set
+  name = excluded.name,
+  monthly_price_cents = excluded.monthly_price_cents,
+  annual_price_cents = excluded.annual_price_cents,
+  client_limit = excluded.client_limit,
+  features = excluded.features,
+  sort_order = excluded.sort_order;
+
+create table if not exists public.subscriptions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null unique,
+  plan_id text references public.plans(id) not null,
+  billing_interval text not null default 'monthly' check (billing_interval in ('monthly', 'annual')),
+  status text not null default 'active' check (status in ('active', 'canceled', 'expired')),
+  beta_expires_at timestamptz,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.subscriptions add column if not exists stripe_customer_id text;
+alter table public.subscriptions add column if not exists stripe_subscription_id text;
+create unique index if not exists subscriptions_stripe_subscription_id_key on public.subscriptions (stripe_subscription_id) where stripe_subscription_id is not null;
+
+alter table public.subscriptions enable row level security;
+
+drop policy if exists "Users can view their own subscription" on public.subscriptions;
+create policy "Users can view their own subscription"
+  on public.subscriptions for select
+  using (auth.uid() = user_id);
+
+-- Users can create their first subscription (plan selection) and switch
+-- plans/interval, but cannot forge someone else's row.
+drop policy if exists "Users can create their own subscription" on public.subscriptions;
+create policy "Users can create their own subscription"
+  on public.subscriptions for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own subscription" on public.subscriptions;
+create policy "Users can update their own subscription"
+  on public.subscriptions for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop trigger if exists update_subscriptions_updated_at on public.subscriptions;
+create trigger update_subscriptions_updated_at
+  before update on public.subscriptions
+  for each row execute function update_updated_at();
+
+-- Entitlement-gated writes: RLS enforces the Pro+ "branding" feature and
+-- the Pro+ "confluence_notion" feature directly at the database level, so
+-- gating can't be bypassed by calling Supabase from the client.
+drop policy if exists "Users can manage their own account settings" on public.account_settings;
+create policy "Users can manage their own account settings"
+  on public.account_settings for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.subscriptions s
+      join public.plans p on p.id = s.plan_id
+      where s.user_id = auth.uid() and s.status = 'active' and p.features ? 'branding'
+    )
+  );
+
+drop policy if exists "Users can manage their own integrations" on public.integrations;
+create policy "Users can manage their own integrations"
+  on public.integrations for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.subscriptions s
+      join public.plans p on p.id = s.plan_id
+      where s.user_id = auth.uid() and s.status = 'active' and p.features ? 'confluence_notion'
+    )
+  );

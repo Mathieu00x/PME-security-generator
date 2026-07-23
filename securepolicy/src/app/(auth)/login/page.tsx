@@ -7,9 +7,11 @@ import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,8 +50,8 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <Logo size="lg" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome Back!</h1>
-          <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t("auth.login.title")}</h1>
+          <p className="text-gray-500 text-sm mt-1">{t("auth.login.subtitle")}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
@@ -57,7 +59,7 @@ export default function LoginPage() {
             <Input
               id="email"
               type="email"
-              label="Email"
+              label={t("auth.email")}
               placeholder="name@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -68,13 +70,13 @@ export default function LoginPage() {
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  Password
+                  {t("auth.password")}
                 </label>
                 <Link
                   href="/reset-password"
                   className="text-xs text-blue-600 hover:underline"
                 >
-                  Forgot password?
+                  {t("auth.forgotPassword")}
                 </Link>
               </div>
               <div className="relative">
@@ -99,13 +101,13 @@ export default function LoginPage() {
             </div>
 
             <Button type="submit" loading={loading} size="lg" className="mt-2 w-full">
-              Sign In
+              {t("auth.signIn")}
             </Button>
           </form>
 
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400">or</span>
+            <span className="text-xs text-gray-400">{t("auth.or")}</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
@@ -119,14 +121,14 @@ export default function LoginPage() {
               <path fill="#FBBC05" d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z" />
               <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
             </svg>
-            Sign in with Google
+            {t("auth.signInGoogle")}
           </button>
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-6">
-          Don&apos;t have an account?{" "}
+          {t("auth.noAccount")}{" "}
           <Link href="/register" className="text-blue-600 font-medium hover:underline">
-            Sign up
+            {t("auth.signUp")}
           </Link>
         </p>
       </div>

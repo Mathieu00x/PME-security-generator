@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { Policy, Branding } from "@/types";
 import { COMPLIANCE_STANDARD_LABELS } from "@/lib/complianceLabels";
-import { ARTIFACT_DEFINITIONS } from "@/lib/artifacts";
+import { ARTIFACT_TITLES_EN } from "@/lib/artifacts";
 import { resolveBranding, hexToRgb } from "@/lib/branding";
 
 interface Props {
@@ -413,7 +413,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           doc.setFontSize(9);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(brR, brG, brB);
-          doc.text(ARTIFACT_DEFINITIONS[evidence.type]?.title || evidence.type, marginL, y);
+          doc.text(ARTIFACT_TITLES_EN[evidence.type] || evidence.type, marginL, y);
           y += 5;
           doc.setFontSize(8);
           doc.setFont("helvetica", "normal");

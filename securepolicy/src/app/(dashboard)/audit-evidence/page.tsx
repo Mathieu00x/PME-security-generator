@@ -1,17 +1,21 @@
 import { createClient } from "@/lib/supabase/server";
-import { ArtifactRow, ArtifactType, AuditArtifact, CompanyProfile, Policy } from "@/types";
+import { ArtifactRow, ArtifactType, AuditArtifact, Policy } from "@/types";
 import { AuditEvidenceTabs } from "@/components/artifacts/AuditEvidenceTabs";
 import { DownloadAuditReportButton } from "@/components/artifacts/DownloadAuditReportButton";
-import { resolveBranding } from "@/lib/branding";
+import { AuditEvidencePageHeader } from "@/components/artifacts/AuditEvidencePageHeader";
+import { getClientContext } from "@/lib/clientContext";
 
 export default async function AuditEvidencePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: artifactRows }, { data: profile }, { data: policies }] = await Promise.all([
-    supabase.from("audit_artifacts").select("*").eq("user_id", user!.id),
-    supabase.from("company_profiles").select("*").eq("user_id", user!.id).single(),
-    supabase.from("policies").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
+  const { clientId, profile, companyName, branding } = await getClientContext(supabase, user!.id);
+
+  const [{ data: artifactRows }, { data: policies }] = await Promise.all([
+    clientId ? supabase.from("audit_artifacts").select("*").eq("client_id", clientId) : Promise.resolve({ data: [] }),
+    clientId
+      ? supabase.from("policies").select("*").eq("client_id", clientId).order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
   ]);
 
   const artifactsByType: Record<ArtifactType, ArtifactRow[]> = {
@@ -27,26 +31,19 @@ export default async function AuditEvidencePage() {
     artifactsByType[a.type] = a.items || [];
   });
 
-  const companyName = (profile as CompanyProfile | null)?.company_name || "Your Company";
-  const branding = resolveBranding(profile as CompanyProfile | null);
-
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Audit Evidence</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Maintain the registers auditors and cyber insurers ask for, and export a complete audit package for {companyName}.
-          </p>
-        </div>
+        <AuditEvidencePageHeader companyName={companyName} />
         <DownloadAuditReportButton
-          companyProfile={profile as CompanyProfile | null}
+          companyProfile={profile}
           policies={(policies as Policy[]) || []}
           artifacts={artifactsByType}
+          branding={branding}
         />
       </div>
 
-      <AuditEvidenceTabs artifactsByType={artifactsByType} companyName={companyName} branding={branding} />
+      <AuditEvidenceTabs artifactsByType={artifactsByType} companyName={companyName} branding={branding} clientId={clientId} />
     </div>
   );
 }

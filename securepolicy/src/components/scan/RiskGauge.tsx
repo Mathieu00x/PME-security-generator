@@ -1,6 +1,10 @@
+"use client";
+import { useLanguage } from "@/contexts/LanguageContext";
+
 export function RiskGauge({ score }: { score: number }) {
+  const { t } = useLanguage();
   const color = score >= 70 ? "#22c55e" : score >= 40 ? "#f59e0b" : "#ef4444";
-  const label = score >= 70 ? "Risque FAIBLE" : score >= 40 ? "Risque MOYEN" : "Risque ÉLEVÉ";
+  const label = score >= 70 ? t("scan.risk.low") : score >= 40 ? t("scan.risk.medium") : t("scan.risk.high");
   const r = 56;
   const circumference = 2 * Math.PI * r;
   const offset = circumference - (score / 100) * circumference;

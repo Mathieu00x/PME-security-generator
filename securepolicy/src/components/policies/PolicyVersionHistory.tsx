@@ -6,12 +6,13 @@ import { RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { PolicyViewer } from "@/components/policies/PolicyViewer";
 import { PolicyVersion } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 import toast from "react-hot-toast";
 
-const CHANGE_LABELS: Record<string, string> = {
-  generated: "Generated",
-  regenerated: "Regenerated",
-  restored: "Restored",
+const CHANGE_KEY: Record<string, string> = {
+  generated: "versionHistory.change.generated",
+  regenerated: "versionHistory.change.regenerated",
+  restored: "versionHistory.change.restored",
 };
 
 export function PolicyVersionHistory({
@@ -23,9 +24,14 @@ export function PolicyVersionHistory({
   currentVersionNumber: number;
   versions: PolicyVersion[];
 }) {
+  const { t, dateLocale } = useLanguage();
   const router = useRouter();
   const [viewing, setViewing] = useState<PolicyVersion | null>(null);
   const [restoring, setRestoring] = useState(false);
+
+  function changeLabel(type: string): string {
+    return CHANGE_KEY[type] ? t(CHANGE_KEY[type]) : type;
+  }
 
   async function handleRestore(version: PolicyVersion) {
     setRestoring(true);
@@ -35,13 +41,13 @@ export function PolicyVersionHistory({
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Restore failed");
+        throw new Error(err.error || t("versionHistory.restoreFailed"));
       }
-      toast.success(`Restored to v${version.version_number}.0`);
+      toast.success(t("versionHistory.restored", { version: version.version_number }));
       setViewing(null);
       router.refresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Something went wrong.";
+      const message = err instanceof Error ? err.message : t("versionHistory.genericError");
       toast.error(message);
     } finally {
       setRestoring(false);
@@ -57,18 +63,18 @@ export function PolicyVersionHistory({
             onClick={() => setViewing(null)}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
           >
-            <X size={14} /> Back to version list
+            <X size={14} /> {t("versionHistory.backToList")}
           </button>
           {!isCurrent && (
             <Button size="sm" onClick={() => handleRestore(viewing)} disabled={restoring}>
               <RotateCcw size={14} />
-              {restoring ? "Restoring…" : `Restore this version`}
+              {restoring ? t("versionHistory.restoring") : t("versionHistory.restoreThis")}
             </Button>
           )}
         </div>
         <div className="mb-4 text-xs text-gray-400">
-          v{viewing.version_number}.0 · {CHANGE_LABELS[viewing.change_type] || viewing.change_type} ·{" "}
-          {new Date(viewing.created_at).toLocaleString("en-CA")}
+          v{viewing.version_number}.0 · {changeLabel(viewing.change_type)} ·{" "}
+          {new Date(viewing.created_at).toLocaleString(dateLocale)}
         </div>
         <PolicyViewer content={viewing.content} />
       </div>
@@ -90,11 +96,11 @@ export function PolicyVersionHistory({
                 <span className="font-semibold text-gray-900">v{v.version_number}.0</span>
                 {isCurrent && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
-                    Current
+                    {t("versionHistory.current")}
                   </span>
                 )}
                 <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
-                  {CHANGE_LABELS[v.change_type] || v.change_type}
+                  {changeLabel(v.change_type)}
                 </span>
               </div>
               {v.change_summary && (
@@ -102,7 +108,7 @@ export function PolicyVersionHistory({
               )}
             </div>
             <span className="text-xs text-gray-400">
-              {new Date(v.created_at).toLocaleDateString("en-CA", {
+              {new Date(v.created_at).toLocaleDateString(dateLocale, {
                 month: "long",
                 day: "numeric",
                 year: "numeric",

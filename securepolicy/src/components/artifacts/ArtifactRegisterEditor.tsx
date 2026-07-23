@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { ArtifactDefinition } from "@/lib/artifacts";
 import { ArtifactRow, Branding } from "@/types";
 import { DownloadRegisterPDFButton } from "@/components/artifacts/DownloadRegisterPDFButton";
+import { ARTIFACT_OPTION_KEYS } from "@/lib/artifacts";
+import { useLanguage } from "@/contexts/LanguageContext";
 import toast from "react-hot-toast";
 
 function emptyRow(definition: ArtifactDefinition): ArtifactRow {
@@ -22,12 +24,15 @@ export function ArtifactRegisterEditor({
   initialItems,
   companyName,
   branding,
+  clientId,
 }: {
   definition: ArtifactDefinition;
   initialItems: ArtifactRow[];
   companyName: string;
   branding?: Branding;
+  clientId: string | null;
 }) {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<ArtifactRow[]>(initialItems);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,19 +58,20 @@ export function ArtifactRegisterEditor({
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+      if (!clientId) throw new Error("No active client selected");
 
       const { error } = await supabase
         .from("audit_artifacts")
         .upsert(
-          { user_id: user.id, type: definition.type, items: rows },
-          { onConflict: "user_id,type" }
+          { user_id: user.id, client_id: clientId, type: definition.type, items: rows },
+          { onConflict: "client_id,type" }
         );
 
       if (error) throw error;
       setDirty(false);
-      toast.success(`${definition.title} saved.`);
+      toast.success(t("register.saved", { title: t(definition.titleKey) }));
     } catch {
-      toast.error("Failed to save. Please try again.");
+      toast.error(t("register.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -75,17 +81,17 @@ export function ArtifactRegisterEditor({
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">{definition.title}</h3>
-          <p className="text-xs text-gray-400 mt-0.5">{definition.description}</p>
+          <h3 className="text-sm font-semibold text-gray-900">{t(definition.titleKey)}</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{t(definition.descKey)}</p>
         </div>
         <div className="flex items-center gap-2">
-          {dirty && <span className="text-xs text-amber-600">Unsaved changes</span>}
+          {dirty && <span className="text-xs text-amber-600">{t("register.unsavedChanges")}</span>}
           <DownloadRegisterPDFButton definition={definition} rows={rows} companyName={companyName} branding={branding} />
           <Button variant="outline" size="sm" onClick={addRow}>
-            <Plus size={14} /> Add Row
+            <Plus size={14} /> {t("register.addRow")}
           </Button>
           <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
-            <Save size={14} /> {saving ? "Saving…" : "Save"}
+            <Save size={14} /> {saving ? t("register.saving") : t("register.save")}
           </Button>
         </div>
       </div>
@@ -96,7 +102,7 @@ export function ArtifactRegisterEditor({
             <tr className="border-b border-gray-100 bg-gray-50">
               {definition.columns.map((col) => (
                 <th key={col.key} className="text-left px-4 py-2 text-xs font-medium text-gray-400 uppercase tracking-wide whitespace-nowrap">
-                  {col.label}
+                  {t(col.labelKey)}
                 </th>
               ))}
               <th className="w-10" />
@@ -106,7 +112,7 @@ export function ArtifactRegisterEditor({
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={definition.columns.length + 1} className="px-4 py-8 text-center text-sm text-gray-400">
-                  No entries yet. Click &quot;Add Row&quot; to start building this register.
+                  {t("register.empty")}
                 </td>
               </tr>
             ) : (
@@ -122,7 +128,7 @@ export function ArtifactRegisterEditor({
                         >
                           <option value="">—</option>
                           {col.options?.map((opt) => (
-                            <option key={opt} value={opt}>{opt}</option>
+                            <option key={opt} value={opt}>{t(`artifact.opt.${ARTIFACT_OPTION_KEYS[opt]}`)}</option>
                           ))}
                         </select>
                       ) : (

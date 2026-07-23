@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { contentToConfluenceStorage, executiveSummaryToConfluenceStorage, securityScoreToConfluenceStorage } from "@/lib/exporters";
 import { ConfluenceIntegrationConfig, Policy } from "@/types";
+import { getEntitlements } from "@/lib/entitlements";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -9,6 +10,11 @@ export async function POST(req: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const entitlements = await getEntitlements(supabase, user.id);
+  if (!entitlements.hasFeature("confluence_notion")) {
+    return NextResponse.json({ error: "Confluence export requires the Pro plan or higher." }, { status: 403 });
   }
 
   const { policyId } = (await req.json()) as { policyId: string };

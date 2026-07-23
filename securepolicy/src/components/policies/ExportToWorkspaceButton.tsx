@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { IntegrationProvider } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 import toast from "react-hot-toast";
 
 const PROVIDER_LABELS: Record<IntegrationProvider, string> = {
@@ -16,6 +17,7 @@ export function ExportToWorkspaceButton({
   policyId: string;
   provider: IntegrationProvider;
 }) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   async function handleExport() {
@@ -29,28 +31,28 @@ export function ExportToWorkspaceButton({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || `Failed to export to ${PROVIDER_LABELS[provider]}.`);
+        throw new Error(data.error || t("exportWorkspace.exportFailed", { provider: PROVIDER_LABELS[provider] }));
       }
 
       toast.success(
-        (t) => (
+        (toastInstance) => (
           <span>
-            Exported to {PROVIDER_LABELS[provider]}.{" "}
+            {t("exportWorkspace.exported", { provider: PROVIDER_LABELS[provider] })}{" "}
             <a
               href={data.url}
               target="_blank"
               rel="noopener noreferrer"
               className="underline font-medium"
-              onClick={() => toast.dismiss(t.id)}
+              onClick={() => toast.dismiss(toastInstance.id)}
             >
-              Open page
+              {t("exportWorkspace.openPage")}
             </a>
           </span>
         ),
         { duration: 8000 }
       );
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Something went wrong.";
+      const message = err instanceof Error ? err.message : t("exportWorkspace.genericError");
       toast.error(message);
     } finally {
       setLoading(false);
@@ -64,7 +66,7 @@ export function ExportToWorkspaceButton({
       className="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-white"
     >
       {loading ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-      {loading ? "Exporting…" : `Export to ${PROVIDER_LABELS[provider]}`}
+      {loading ? t("exportWorkspace.exporting") : t("exportWorkspace.exportTo", { provider: PROVIDER_LABELS[provider] })}
     </button>
   );
 }

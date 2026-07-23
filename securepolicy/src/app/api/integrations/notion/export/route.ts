@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { contentToNotionBlocks, executiveSummaryToNotionBlocks, securityScoreToNotionBlocks } from "@/lib/exporters";
 import { NotionIntegrationConfig, Policy } from "@/types";
+import { getEntitlements } from "@/lib/entitlements";
 
 const NOTION_VERSION = "2022-06-28";
 const NOTION_BLOCK_BATCH = 100;
@@ -12,6 +13,11 @@ export async function POST(req: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const entitlements = await getEntitlements(supabase, user.id);
+  if (!entitlements.hasFeature("confluence_notion")) {
+    return NextResponse.json({ error: "Notion export requires the Pro plan or higher." }, { status: 403 });
   }
 
   const { policyId } = (await req.json()) as { policyId: string };
