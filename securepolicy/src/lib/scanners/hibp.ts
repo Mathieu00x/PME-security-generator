@@ -28,6 +28,16 @@ export async function checkHIBP(domain: string): Promise<HIBPResult> {
     );
 
     if (res.status === 404) return { compromisedCount: 0, breaches: [] };
+
+    if (res.status === 400) {
+      // HIBP's domain-search endpoint only works for domains that have been
+      // manually verified (DNS TXT or file upload) in the API key owner's
+      // own HIBP dashboard — it's not usable for arbitrary third-party
+      // domains, by design (prevents anyone from enumerating any company's
+      // breach exposure without proving ownership). See haveibeenpwned.com/DomainSearch.
+      return { compromisedCount: 0, breaches: [], error: "Domaine non vérifié sur HIBP — voir haveibeenpwned.com/DomainSearch" };
+    }
+
     if (!res.ok) return { compromisedCount: 0, breaches: [], error: "HIBP check failed" };
 
     const data = (await res.json()) as Record<string, string[]>;
