@@ -23,8 +23,11 @@ export function ChoosePlanClient({
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   const now = Date.now();
+  // Paid plans (starter, pro, agency) are hidden while Stripe is in test
+  // mode during the beta — change this back to show all plans (see git
+  // history) once ready to accept real payments.
   const visiblePlans = plans.filter((p) => {
-    if (p.id !== "beta") return true;
+    if (p.id !== "beta") return false;
     return !p.beta_cutoff_at || new Date(p.beta_cutoff_at).getTime() > now;
   });
 
@@ -81,29 +84,31 @@ export function ChoosePlanClient({
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-3 mb-10">
-          <button
-            onClick={() => setInterval("monthly")}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              interval === "monthly" ? "bg-gray-900 text-white" : "text-gray-500 hover:text-gray-900"
-            }`}
-          >
-            {t("plan.monthly")}
-          </button>
-          <button
-            onClick={() => setInterval("annual")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              interval === "annual" ? "bg-gray-900 text-white" : "text-gray-500 hover:text-gray-900"
-            }`}
-          >
-            {t("plan.annual")}
-            <span className="text-[10px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
-              {t("plan.twoMonthsFree")}
-            </span>
-          </button>
-        </div>
+        {visiblePlans.some((p) => p.monthly_price_cents > 0) && (
+          <div className="flex items-center justify-center gap-3 mb-10">
+            <button
+              onClick={() => setInterval("monthly")}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                interval === "monthly" ? "bg-gray-900 text-white" : "text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              {t("plan.monthly")}
+            </button>
+            <button
+              onClick={() => setInterval("annual")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                interval === "annual" ? "bg-gray-900 text-white" : "text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              {t("plan.annual")}
+              <span className="text-[10px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                {t("plan.twoMonthsFree")}
+              </span>
+            </button>
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 max-w-sm mx-auto gap-5">
           {visiblePlans.map((plan) => {
             const isCurrent = currentSubscription?.plan_id === plan.id;
             const isBeta = plan.id === "beta";

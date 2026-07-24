@@ -207,8 +207,11 @@ export default function LandingPage() {
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-2">{t("pricing.title")}</h2>
           <p className="text-gray-500 text-center mb-14">{t("pricing.subtitle")}</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-            {(["starter", "pro", "agency", "beta"] as const).map((planKey) => {
+          <div className="grid grid-cols-1 max-w-sm mx-auto gap-5">
+            {/* Paid plans (starter, pro, agency) are hidden while Stripe is
+                in test mode during the beta — re-add them to this array
+                once ready to accept real payments. */}
+            {(["beta"] as ("starter" | "pro" | "agency" | "beta")[]).map((planKey) => {
               const isPopular = planKey === "pro";
               const isBeta = planKey === "beta";
               return (
