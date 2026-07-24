@@ -205,7 +205,7 @@ export default function LandingPage() {
       <section id="pricing" className="py-24 px-8">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-2">{t("pricing.title")}</h2>
-          <p className="text-gray-500 text-center mb-14">{t("pricing.subtitle")}</p>
+          <p className="text-gray-500 text-center mb-14">{t("pricing.subtitleBeta")}</p>
 
           <div className="grid grid-cols-1 max-w-sm mx-auto gap-5">
             {/* Paid plans (starter, pro, agency) are hidden while Stripe is
@@ -270,7 +270,7 @@ export default function LandingPage() {
               );
             })}
           </div>
-          <p className="text-center text-xs text-gray-400 mt-8">{t("pricing.annualNote")}</p>
+          <p className="text-center text-xs text-gray-400 mt-8">{t("pricing.annualNoteBeta")}</p>
         </div>
       </section>
 

@@ -83,7 +83,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Pricing
     "pricing.title": "Simple, transparent pricing",
     "pricing.subtitle": "No hidden fees. Cancel anytime. Save ~17% (2 months free) with annual billing.",
+    "pricing.subtitleBeta": "We're in beta — every feature is free while we build this with early users like you.",
     "pricing.annualNote": "Prices shown monthly. Annual billing available at checkout — 2 months free (~17% off).",
+    "pricing.annualNoteBeta": "Paid plans (Starter, Pro, Agency) are coming soon — beta users get everything free in the meantime.",
     "pricing.starter.name": "Starter",
     "pricing.starter.price": "$59",
     "pricing.starter.period": "/month",
@@ -867,7 +869,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Pricing
     "pricing.title": "Tarification simple et transparente",
     "pricing.subtitle": "Sans frais cachés. Annulable en tout temps. Économisez ~17 % (2 mois gratuits) en facturation annuelle.",
+    "pricing.subtitleBeta": "Nous sommes en bêta — toutes les fonctionnalités sont gratuites pendant qu'on bâtit ça avec nos premiers utilisateurs.",
     "pricing.annualNote": "Prix affichés mensuellement. Facturation annuelle disponible — 2 mois gratuits (~17 % de rabais).",
+    "pricing.annualNoteBeta": "Les forfaits payants (Starter, Pro, Agence) arrivent bientôt — tout est gratuit pour les utilisateurs de la bêta en attendant.",
     "pricing.starter.name": "Starter",
     "pricing.starter.price": "59 $",
     "pricing.starter.period": "/mois",
