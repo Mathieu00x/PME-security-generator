@@ -69,6 +69,7 @@ export default function RegisterPage() {
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">{t("auth.checkEmail")}</h2>
             <p className="text-gray-500 text-sm">{t("auth.confirmationSent", { email })}</p>
+            <p className="text-gray-400 text-xs mt-3">{t("auth.checkSpamNote")}</p>
             <Link
               href="/login"
               className="mt-6 inline-block text-sm text-blue-600 font-medium hover:underline"
