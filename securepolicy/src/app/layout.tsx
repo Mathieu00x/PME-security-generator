@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.securepilot.ca"),
   title: "SecurePilot — Politiques de sécurité pour PME / AI-Powered Security Policies for SMBs",
   description:
     "Générez des politiques de cybersécurité professionnelles en minutes. Generate professional cybersecurity policies in minutes.",
