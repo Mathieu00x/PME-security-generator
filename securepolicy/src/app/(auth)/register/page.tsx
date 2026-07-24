@@ -56,7 +56,13 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      // key forces a clean unmount/remount instead of an in-place DOM diff
+      // when swapping from the form to this screen — without it, a
+      // password-manager extension injecting nodes into the form (very
+      // common on the password fields below) can leave React diffing
+      // against a DOM it no longer recognizes, throwing a NotFoundError
+      // ("insertBefore") that crashes the page mid-signup.
+      <div key="success" className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="w-full max-w-sm text-center">
           <div className="flex justify-center mb-6">
             <Logo size="lg" />
@@ -83,7 +89,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div key="form" className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
