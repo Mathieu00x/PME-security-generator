@@ -35,11 +35,18 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
 
       let y = marginT;
 
+      // Matches the top offset used after every explicit `drawHeader()` call
+      // elsewhere in this file (28 = 10mm of breathing room below the header's
+      // divider line at y=18) — this used to reset to `marginT` (20) instead,
+      // just 2mm below the divider, so pages that broke mid-content looked
+      // noticeably more cramped at the top than deliberate section-start pages.
+      const contentTopY = 28;
+
       const checkPageBreak = (needed = 10) => {
         if (y + needed > pageH - 20) {
           doc.addPage();
-          y = marginT;
           drawHeader();
+          y = contentTopY;
         }
       };
 
@@ -198,7 +205,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       // ── Policy content ────────────────────────────────────────────────
       doc.addPage();
       drawHeader();
-      y = 28;
+      y = contentTopY;
 
       const lines = policy.content.split("\n");
       let inList = false;
@@ -282,7 +289,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
         if (entries.length) {
           doc.addPage();
           drawHeader();
-          y = 28;
+          y = contentTopY;
 
           doc.setFillColor(brR, brG, brB);
           doc.rect(marginL, y - 4, 3, 9, "F");
@@ -321,7 +328,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       if (gap) {
         doc.addPage();
         drawHeader();
-        y = 28;
+        y = contentTopY;
 
         doc.setFillColor(brR, brG, brB);
         doc.rect(marginL, y - 4, 3, 9, "F");
@@ -390,7 +397,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       if (auditEvidence && auditEvidence.length) {
         doc.addPage();
         drawHeader();
-        y = 28;
+        y = contentTopY;
 
         doc.setFillColor(brR, brG, brB);
         doc.rect(marginL, y - 4, 3, 9, "F");
@@ -429,7 +436,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       if (recommendations && recommendations.length) {
         doc.addPage();
         drawHeader();
-        y = 28;
+        y = contentTopY;
 
         doc.setFillColor(brR, brG, brB);
         doc.rect(marginL, y - 4, 3, 9, "F");
@@ -474,7 +481,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       if (bp && (bp.dos.length || bp.donts.length)) {
         doc.addPage();
         drawHeader();
-        y = 28;
+        y = contentTopY;
 
         // Section title
         doc.setFillColor(brR, brG, brB);
@@ -544,7 +551,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       if (actions && actions.length) {
         doc.addPage();
         drawHeader();
-        y = 28;
+        y = contentTopY;
 
         doc.setFillColor(brR, brG, brB);
         doc.rect(marginL, y - 4, 3, 9, "F");
