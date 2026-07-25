@@ -15,4 +15,16 @@ Sentry.init({
   replaysOnErrorSampleRate: 0,
 
   debug: false,
+
+  // Well-known browser-extension noise, not app bugs — these come from
+  // extensions' own internal messaging (password managers, grammar
+  // checkers, etc.) failing to reach a DOM node/tab that's since changed,
+  // and are not actionable from our code. See:
+  // https://docs.sentry.io/platforms/javascript/configuration/filtering/#decluttering-sentry
+  ignoreErrors: [
+    "Object Not Found Matching Id",
+    "Non-Error promise rejection captured",
+    "ResizeObserver loop limit exceeded",
+    "ResizeObserver loop completed with undelivered notifications",
+  ],
 });
