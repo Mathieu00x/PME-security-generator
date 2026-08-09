@@ -57,6 +57,7 @@ export default async function DashboardPage() {
       topRecommendations={topRecommendations}
       outdatedPolicyCount={outdatedPolicyCount}
       clientId={clientId}
+      hasClient={clientId !== null}
       hasProfile={!!profile}
     />
   );

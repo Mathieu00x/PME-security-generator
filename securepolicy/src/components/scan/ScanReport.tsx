@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Lock, Mail, Globe, Layers, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+import { Lock, Mail, Globe, Layers, RefreshCw, CheckCircle2, XCircle, ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { AttackSurfaceReport } from "@/types";
@@ -118,6 +118,33 @@ export function ScanReport({ report }: { report: AttackSurfaceReport }) {
           </p>
         </Card>
       </div>
+
+      {/* Security headers */}
+      <Card padding="sm" className="mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <ShieldCheck size={15} className="text-blue-500" />
+          <h3 className="text-sm font-semibold text-gray-900">{t("scan.report.securityHeaders")}</h3>
+        </div>
+        {report.security_headers?.error ? (
+          <p className="text-xs text-gray-400">{report.security_headers.error}</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "HSTS", ok: report.security_headers.hasHSTS },
+              { label: "CSP", ok: report.security_headers.hasCSP },
+              { label: "X-Frame-Options", ok: report.security_headers.hasXFrameOptions },
+              { label: "X-Content-Type-Options", ok: report.security_headers.hasXContentTypeOptions },
+              { label: "Referrer-Policy", ok: report.security_headers.hasReferrerPolicy },
+              { label: "Permissions-Policy", ok: report.security_headers.hasPermissionsPolicy },
+            ].map(({ label, ok }) => (
+              <span key={label} className="flex items-center gap-1.5 text-xs text-gray-600">
+                {ok ? <CheckCircle2 size={12} className="text-green-500 flex-shrink-0" /> : <XCircle size={12} className="text-red-400 flex-shrink-0" />}
+                {label}
+              </span>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* Findings */}
       <Card className="mb-4">

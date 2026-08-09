@@ -2,6 +2,7 @@ import { SSLResult } from "@/lib/scanners/ssl";
 import { HIBPResult } from "@/lib/scanners/hibp";
 import { SubdomainsResult } from "@/lib/scanners/subdomains";
 import { DNSResult } from "@/lib/scanners/dns";
+import { SecurityHeadersResult } from "@/lib/scanners/headers";
 
 export type PolicyType =
   | "password"
@@ -232,6 +233,7 @@ export interface AttackSurfaceReport {
   emails_compromis: HIBPResult;
   subdomains: SubdomainsResult;
   dns: DNSResult;
+  security_headers: SecurityHeadersResult;
   findings: ScanFinding[];
   recommended_policies: PolicyType[];
 }

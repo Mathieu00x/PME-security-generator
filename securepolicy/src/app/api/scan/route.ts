@@ -4,13 +4,14 @@ import { checkSSL, SSLResult } from "@/lib/scanners/ssl";
 import { checkHIBP, HIBPResult } from "@/lib/scanners/hibp";
 import { checkSubdomains, SubdomainsResult } from "@/lib/scanners/subdomains";
 import { checkDNS, DNSResult } from "@/lib/scanners/dns";
+import { checkSecurityHeaders, SecurityHeadersResult } from "@/lib/scanners/headers";
 import { PolicyType, ScanFinding } from "@/types";
 import { getActiveClientId } from "@/lib/activeClient";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 const DOMAIN_RE = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/;
 
-function calculateRiskScore(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult): number {
+function calculateRiskScore(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult, headers: SecurityHeadersResult): number {
   let score = 100;
 
   if (!ssl.hasSSL) score -= 25;
@@ -25,6 +26,12 @@ function calculateRiskScore(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult): n
   if (!dns.hasSPF) score -= 10;
   if (!dns.hasDMARC) score -= 10;
   if (!dns.hasMX) score -= 5;
+
+  if (!headers.error) {
+    if (headers.missingCount >= 5) score -= 15;
+    else if (headers.missingCount >= 3) score -= 10;
+    else if (headers.missingCount >= 1) score -= 5;
+  }
 
   return Math.max(0, score);
 }
@@ -47,7 +54,7 @@ function getRecommendedPolicies(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult
   return Array.from(new Set(policies));
 }
 
-function buildFindings(ssl: SSLResult, hibp: HIBPResult, subdomains: SubdomainsResult, dns: DNSResult): ScanFinding[] {
+function buildFindings(ssl: SSLResult, hibp: HIBPResult, subdomains: SubdomainsResult, dns: DNSResult, headers: SecurityHeadersResult): ScanFinding[] {
   const findings: ScanFinding[] = [];
 
   if (!ssl.hasSSL) {
@@ -91,6 +98,24 @@ function buildFindings(ssl: SSLResult, hibp: HIBPResult, subdomains: SubdomainsR
     message: `${subdomains.count} sous-domaine(s) exposé(s) détecté(s)`,
   });
 
+  if (!headers.error) {
+    if (!headers.hasHSTS) {
+      findings.push({ severity: "medium", category: "En-têtes de sécurité", message: "HSTS non activé (risque de rétrogradation HTTP)" });
+    }
+    if (!headers.hasCSP) {
+      findings.push({ severity: "medium", category: "En-têtes de sécurité", message: "Aucune Content-Security-Policy configurée (risque XSS accru)" });
+    }
+    if (!headers.hasXFrameOptions) {
+      findings.push({ severity: "medium", category: "En-têtes de sécurité", message: "Aucune protection contre le clickjacking (X-Frame-Options)" });
+    }
+    if (!headers.hasXContentTypeOptions) {
+      findings.push({ severity: "low", category: "En-têtes de sécurité", message: "X-Content-Type-Options manquant (MIME-sniffing possible)" });
+    }
+    if (headers.missingCount === 0) {
+      findings.push({ severity: "low", category: "En-têtes de sécurité", message: "En-têtes de sécurité bien configurés" });
+    }
+  }
+
   return findings;
 }
 
@@ -121,16 +146,17 @@ export async function POST(req: NextRequest) {
 
     // Run every scanner in parallel; each is self-contained and never throws
     // (they catch internally), so one failing check can't block the others.
-    const [ssl, hibp, subdomains, dns] = await Promise.all([
+    const [ssl, hibp, subdomains, dns, securityHeaders] = await Promise.all([
       checkSSL(domain),
       checkHIBP(domain),
       checkSubdomains(domain),
       checkDNS(domain),
+      checkSecurityHeaders(domain),
     ]);
 
-    const riskScore = calculateRiskScore(ssl, hibp, dns);
+    const riskScore = calculateRiskScore(ssl, hibp, dns, securityHeaders);
     const recommendedPolicies = getRecommendedPolicies(ssl, hibp, dns);
-    const findings = buildFindings(ssl, hibp, subdomains, dns);
+    const findings = buildFindings(ssl, hibp, subdomains, dns, securityHeaders);
 
     const { data: report, error } = await supabase
       .from("attack_surface_reports")
@@ -143,6 +169,7 @@ export async function POST(req: NextRequest) {
         emails_compromis: hibp,
         subdomains,
         dns,
+        security_headers: securityHeaders,
         findings,
         recommended_policies: recommendedPolicies,
       })

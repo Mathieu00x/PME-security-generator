@@ -291,10 +291,14 @@ create table if not exists public.attack_surface_reports (
   emails_compromis jsonb not null default '{}'::jsonb,
   subdomains jsonb not null default '{}'::jsonb,
   dns jsonb not null default '{}'::jsonb,
+  security_headers jsonb not null default '{}'::jsonb,
   findings jsonb not null default '[]'::jsonb,
   recommended_policies jsonb not null default '[]'::jsonb,
   created_at timestamptz default now()
 );
+
+-- security_headers column added after initial launch (HSTS/CSP/X-Frame-Options/etc check)
+alter table public.attack_surface_reports add column if not exists security_headers jsonb not null default '{}'::jsonb;
 
 alter table public.attack_surface_reports enable row level security;
 
@@ -578,3 +582,15 @@ create policy "Users can manage their own attack surface reports"
     auth.uid() = user_id
     and (client_id is null or exists (select 1 from public.clients c where c.id = client_id and c.user_id = auth.uid()))
   );
+
+-- Dedupe tracking for automated re-engagement emails (sent by the
+-- /api/cron/reengagement route via the service-role client only — no
+-- client-facing RLS policy needed).
+create table if not exists public.email_campaigns_sent (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  campaign text not null,
+  sent_at timestamptz default now(),
+  unique (user_id, campaign)
+);
+alter table public.email_campaigns_sent enable row level security;

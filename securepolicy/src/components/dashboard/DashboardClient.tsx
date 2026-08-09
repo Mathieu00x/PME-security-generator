@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { FileText, TrendingUp, Lightbulb, Download, MoreHorizontal, Plus, AlertTriangle, Radar, ArrowRight } from "lucide-react";
+import { FileText, TrendingUp, Lightbulb, Download, MoreHorizontal, Plus, AlertTriangle, Check, Building2, Radar, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Policy, PrioritizedRecommendation } from "@/types";
@@ -20,6 +20,7 @@ export function DashboardClient({
   topRecommendations,
   outdatedPolicyCount,
   clientId,
+  hasClient,
   hasProfile,
 }: {
   firstName: string;
@@ -29,30 +30,19 @@ export function DashboardClient({
   topRecommendations: PrioritizedRecommendation[];
   outdatedPolicyCount: number;
   clientId: string | null;
+  hasClient: boolean;
   hasProfile: boolean;
 }) {
   const { t, dateLocale } = useLanguage();
 
+  const hasScanned = scanCount > 0;
+  const hasPolicy = policies.length > 0;
+  const onboardingDone = hasClient && hasScanned && hasPolicy;
+
   return (
     <div className="max-w-5xl mx-auto">
-      {!scanCount && (
-        <Link
-          href="/scan"
-          className="mb-6 flex items-center justify-between gap-4 px-6 py-5 bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl shadow-lg shadow-blue-200 hover:shadow-xl transition-shadow"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 bg-white/15 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Radar size={22} className="text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-white">{t("dashboard.scanBanner.title")}</p>
-              <p className="text-sm text-blue-100 mt-0.5">{t("dashboard.scanBanner.subtitle")}</p>
-            </div>
-          </div>
-          <span className="flex items-center gap-1.5 text-sm font-semibold text-white flex-shrink-0 whitespace-nowrap">
-            {t("dashboard.scanBanner.cta")} <ArrowRight size={15} />
-          </span>
-        </Link>
+      {!onboardingDone && (
+        <OnboardingChecklist hasClient={hasClient} hasScanned={hasScanned} hasPolicy={hasPolicy} />
       )}
 
       {/* Header */}
@@ -239,5 +229,98 @@ export function DashboardClient({
         </div>
       )}
     </div>
+  );
+}
+
+function OnboardingChecklist({
+  hasClient,
+  hasScanned,
+  hasPolicy,
+}: {
+  hasClient: boolean;
+  hasScanned: boolean;
+  hasPolicy: boolean;
+}) {
+  const { t } = useLanguage();
+
+  const steps = [
+    {
+      done: hasClient,
+      icon: Building2,
+      label: t("onboarding.step1.label"),
+      desc: t("onboarding.step1.desc"),
+      cta: t("onboarding.step1.cta"),
+      href: "/clients",
+    },
+    {
+      done: hasScanned,
+      icon: Radar,
+      label: t("onboarding.step2.label"),
+      desc: t("onboarding.step2.desc"),
+      cta: t("onboarding.step2.cta"),
+      href: "/scan",
+    },
+    {
+      done: hasPolicy,
+      icon: Sparkles,
+      label: t("onboarding.step3.label"),
+      desc: t("onboarding.step3.desc"),
+      cta: t("onboarding.step3.cta"),
+      href: "/generate",
+    },
+  ];
+
+  const doneCount = steps.filter((s) => s.done).length;
+  // Only the first incomplete step gets a call-to-action, so there's always
+  // exactly one obvious next action instead of three competing buttons.
+  const nextStepIndex = steps.findIndex((s) => !s.done);
+
+  return (
+    <Card className="mb-6" padding="none">
+      <div className="px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-semibold text-gray-900">{t("onboarding.title")}</h2>
+          <span className="text-xs text-gray-400 font-medium">
+            {t("onboarding.subtitle", { done: doneCount, total: steps.length })}
+          </span>
+        </div>
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-blue-600 rounded-full transition-all duration-300"
+            style={{ width: `${(doneCount / steps.length) * 100}%` }}
+          />
+        </div>
+      </div>
+      <div className="divide-y divide-gray-50">
+        {steps.map((step, i) => {
+          const Icon = step.icon;
+          const isNext = i === nextStepIndex;
+          return (
+            <div key={step.label} className="flex items-center justify-between gap-4 px-6 py-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    step.done ? "bg-green-100" : "bg-gray-100"
+                  }`}
+                >
+                  {step.done ? <Check size={15} className="text-green-600" /> : <Icon size={15} className="text-gray-400" />}
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-sm font-medium truncate ${step.done ? "text-gray-400 line-through" : "text-gray-900"}`}>
+                    {step.label}
+                  </p>
+                  <p className="text-xs text-gray-400 truncate">{step.desc}</p>
+                </div>
+              </div>
+              {isNext && (
+                <Link href={step.href} className="flex-shrink-0">
+                  <Button size="sm">{step.cta}</Button>
+                </Link>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
