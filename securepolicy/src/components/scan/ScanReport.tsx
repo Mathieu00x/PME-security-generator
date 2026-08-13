@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Lock, Mail, Globe, Layers, RefreshCw, CheckCircle2, XCircle, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { Lock, Mail, Globe, Layers, RefreshCw, CheckCircle2, XCircle, ShieldCheck, PartyPopper, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { AttackSurfaceReport } from "@/types";
@@ -12,7 +13,7 @@ import { PolicyRecommendations } from "@/components/scan/PolicyRecommendations";
 import { ScanForm } from "@/components/scan/ScanForm";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-export function ScanReport({ report }: { report: AttackSurfaceReport }) {
+export function ScanReport({ report, isFirstScan }: { report: AttackSurfaceReport; isFirstScan?: boolean }) {
   const { t, dateLocale } = useLanguage();
   const [rescanning, setRescanning] = useState(false);
   const prevIdRef = useRef(report.id);
@@ -43,6 +44,24 @@ export function ScanReport({ report }: { report: AttackSurfaceReport }) {
           {t("scan.report.newScan")}
         </Button>
       </div>
+
+      {/* First-scan "wow moment": immediate, unmissable next action */}
+      {isFirstScan && (
+        <div className="mb-4 flex items-center justify-between gap-4 bg-green-50 border border-green-200 rounded-xl px-5 py-4">
+          <div className="flex items-center gap-3">
+            <PartyPopper size={20} className="text-green-600 flex-shrink-0" />
+            <p className="text-sm font-medium text-green-900">
+              {t("scan.report.firstScanTitle", { score: report.risk_score })}
+            </p>
+          </div>
+          <Link href={`/generate?from=scan&scanId=${report.id}`} className="flex-shrink-0">
+            <Button size="sm">
+              {t("scan.report.firstScanCta")}
+              <ArrowRight size={14} />
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* AI executive summary */}
       {report.executive_summary && (
