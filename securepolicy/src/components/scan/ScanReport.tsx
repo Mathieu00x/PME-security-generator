@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { AttackSurfaceReport } from "@/types";
 import { RiskGauge } from "@/components/scan/RiskGauge";
+import { PriorityActions } from "@/components/scan/PriorityActions";
 import { FindingCard } from "@/components/scan/FindingCard";
 import { PolicyRecommendations } from "@/components/scan/PolicyRecommendations";
 import { ScanForm } from "@/components/scan/ScanForm";
@@ -47,6 +48,8 @@ export function ScanReport({ report }: { report: AttackSurfaceReport }) {
       <Card className="mb-4 flex items-center justify-center py-8">
         <RiskGauge score={report.risk_score} />
       </Card>
+
+      <PriorityActions report={report} />
 
       {/* Score breakdown (absent on scans taken before this feature shipped) */}
       {report.score_breakdown?.ssl !== undefined && (
