@@ -222,6 +222,13 @@ export interface ScanFinding {
   message: string;
 }
 
+export interface ScoreBreakdown {
+  ssl: number;
+  dnsEmail: number;
+  dataExposure: number;
+  headers: number;
+}
+
 export interface AttackSurfaceReport {
   id: string;
   user_id: string;
@@ -229,6 +236,7 @@ export interface AttackSurfaceReport {
   domain: string;
   created_at: string;
   risk_score: number;
+  score_breakdown?: ScoreBreakdown;
   ssl: SSLResult;
   emails_compromis: HIBPResult;
   subdomains: SubdomainsResult;
@@ -236,6 +244,7 @@ export interface AttackSurfaceReport {
   security_headers: SecurityHeadersResult;
   findings: ScanFinding[];
   recommended_policies: PolicyType[];
+  executive_summary?: string;
 }
 
 export interface Framework {

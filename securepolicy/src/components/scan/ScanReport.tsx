@@ -48,6 +48,34 @@ export function ScanReport({ report }: { report: AttackSurfaceReport }) {
         <RiskGauge score={report.risk_score} />
       </Card>
 
+      {/* Score breakdown (absent on scans taken before this feature shipped) */}
+      {report.score_breakdown?.ssl !== undefined && (
+        <Card padding="sm" className="mb-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t("scan.report.scoreBreakdown")}</h3>
+          <div className="flex flex-col gap-2.5">
+            {[
+              { label: t("scan.report.breakdown.ssl"), score: report.score_breakdown.ssl },
+              { label: t("scan.report.breakdown.dnsEmail"), score: report.score_breakdown.dnsEmail },
+              { label: t("scan.report.breakdown.dataExposure"), score: report.score_breakdown.dataExposure },
+              { label: t("scan.report.breakdown.headers"), score: report.score_breakdown.headers },
+            ].map(({ label, score }) => (
+              <div key={label} className="flex items-center gap-3">
+                <span className="text-xs text-gray-600 w-56 flex-shrink-0">{label}</span>
+                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${score >= 20 ? "bg-green-500" : score >= 12 ? "bg-yellow-500" : "bg-red-500"}`}
+                    style={{ width: `${(score / 25) * 100}%` }}
+                  />
+                </div>
+                <span className="text-xs font-medium text-gray-900 w-14 text-right flex-shrink-0">
+                  {t("scan.report.outOf25", { score })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* Summary grid */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         <Card padding="sm">

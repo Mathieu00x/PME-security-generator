@@ -300,6 +300,12 @@ create table if not exists public.attack_surface_reports (
 -- security_headers column added after initial launch (HSTS/CSP/X-Frame-Options/etc check)
 alter table public.attack_surface_reports add column if not exists security_headers jsonb not null default '{}'::jsonb;
 
+-- score_breakdown: per-category (SSL/DNS+Email/HIBP/Headers) subscores out of 25 each,
+-- summing to risk_score. executive_summary: 2-sentence AI-generated, non-technical
+-- summary of the scan shown at the top of the report.
+alter table public.attack_surface_reports add column if not exists score_breakdown jsonb not null default '{}'::jsonb;
+alter table public.attack_surface_reports add column if not exists executive_summary text;
+
 alter table public.attack_surface_reports enable row level security;
 
 drop policy if exists "Users can manage their own attack surface reports" on public.attack_surface_reports;

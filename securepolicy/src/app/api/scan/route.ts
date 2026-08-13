@@ -5,36 +5,57 @@ import { checkHIBP, HIBPResult } from "@/lib/scanners/hibp";
 import { checkSubdomains, SubdomainsResult } from "@/lib/scanners/subdomains";
 import { checkDNS, DNSResult } from "@/lib/scanners/dns";
 import { checkSecurityHeaders, SecurityHeadersResult } from "@/lib/scanners/headers";
-import { PolicyType, ScanFinding } from "@/types";
+import { PolicyType, ScanFinding, ScoreBreakdown } from "@/types";
 import { getActiveClientId } from "@/lib/activeClient";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 const DOMAIN_RE = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/;
 
-function calculateRiskScore(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult, headers: SecurityHeadersResult): number {
-  let score = 100;
+// Each category maxes out at 25 points so the breakdown sums to the same
+// 0-100 total shown on the risk gauge, and each is independently readable
+// (e.g. "SSL/TLS: 15/25") on the scan report.
+function sslCategoryScore(ssl: SSLResult): number {
+  if (!ssl.hasSSL) return 0;
+  if (ssl.expired) return 5;
+  if (ssl.daysUntilExpiry !== null && ssl.daysUntilExpiry < 30) return 15;
+  if (ssl.grade && ["C", "D", "E", "F"].includes(ssl.grade)) return 10;
+  return 25;
+}
 
-  if (!ssl.hasSSL) score -= 25;
-  else if (ssl.expired) score -= 20;
-  else if (ssl.daysUntilExpiry !== null && ssl.daysUntilExpiry < 30) score -= 10;
-  else if (ssl.grade && ["C", "D", "E", "F"].includes(ssl.grade)) score -= 15;
+function dataExposureCategoryScore(hibp: HIBPResult): number {
+  if (hibp.compromisedCount > 10) return 0;
+  if (hibp.compromisedCount > 3) return 10;
+  if (hibp.compromisedCount > 0) return 17;
+  return 25;
+}
 
-  if (hibp.compromisedCount > 10) score -= 25;
-  else if (hibp.compromisedCount > 3) score -= 15;
-  else if (hibp.compromisedCount > 0) score -= 8;
-
+function dnsEmailCategoryScore(dns: DNSResult): number {
+  let score = 25;
   if (!dns.hasSPF) score -= 8;
   if (!dns.hasDMARC) score -= 8;
   if (!dns.hasDKIM) score -= 7;
   if (!dns.hasMX) score -= 2;
-
-  if (!headers.error) {
-    if (headers.missingCount >= 5) score -= 15;
-    else if (headers.missingCount >= 3) score -= 10;
-    else if (headers.missingCount >= 1) score -= 5;
-  }
-
   return Math.max(0, score);
+}
+
+function headersCategoryScore(headers: SecurityHeadersResult): number {
+  if (headers.error) return 25;
+  const totalHeaders = 6;
+  const present = totalHeaders - headers.missingCount;
+  return Math.round((present / totalHeaders) * 25);
+}
+
+function computeScoreBreakdown(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult, headers: SecurityHeadersResult): ScoreBreakdown {
+  return {
+    ssl: sslCategoryScore(ssl),
+    dnsEmail: dnsEmailCategoryScore(dns),
+    dataExposure: dataExposureCategoryScore(hibp),
+    headers: headersCategoryScore(headers),
+  };
+}
+
+function calculateRiskScore(breakdown: ScoreBreakdown): number {
+  return breakdown.ssl + breakdown.dnsEmail + breakdown.dataExposure + breakdown.headers;
 }
 
 function getRecommendedPolicies(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult): PolicyType[] {
@@ -158,7 +179,8 @@ export async function POST(req: NextRequest) {
       checkSecurityHeaders(domain),
     ]);
 
-    const riskScore = calculateRiskScore(ssl, hibp, dns, securityHeaders);
+    const scoreBreakdown = computeScoreBreakdown(ssl, hibp, dns, securityHeaders);
+    const riskScore = calculateRiskScore(scoreBreakdown);
     const recommendedPolicies = getRecommendedPolicies(ssl, hibp, dns);
     const findings = buildFindings(ssl, hibp, subdomains, dns, securityHeaders);
 
@@ -169,6 +191,7 @@ export async function POST(req: NextRequest) {
         client_id: clientId,
         domain,
         risk_score: riskScore,
+        score_breakdown: scoreBreakdown,
         ssl,
         emails_compromis: hibp,
         subdomains,
@@ -185,7 +208,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to save report" }, { status: 500 });
     }
 
-    return NextResponse.json({ reportId: report.id, riskScore, findings, recommendedPolicies });
+    return NextResponse.json({ reportId: report.id, riskScore, scoreBreakdown, findings, recommendedPolicies });
   } catch (err) {
     console.error("Scan error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
