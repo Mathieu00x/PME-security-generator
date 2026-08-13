@@ -95,6 +95,7 @@ export function ScanReport({ report }: { report: AttackSurfaceReport }) {
           <div className="flex flex-col gap-1 text-xs text-gray-600">
             {[
               { label: "SPF", ok: report.dns.hasSPF },
+              { label: "DKIM", ok: report.dns.hasDKIM },
               { label: "DMARC", ok: report.dns.hasDMARC },
               { label: "MX", ok: report.dns.hasMX },
             ].map(({ label, ok }) => (

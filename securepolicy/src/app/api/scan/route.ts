@@ -23,9 +23,10 @@ function calculateRiskScore(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult, he
   else if (hibp.compromisedCount > 3) score -= 15;
   else if (hibp.compromisedCount > 0) score -= 8;
 
-  if (!dns.hasSPF) score -= 10;
-  if (!dns.hasDMARC) score -= 10;
-  if (!dns.hasMX) score -= 5;
+  if (!dns.hasSPF) score -= 8;
+  if (!dns.hasDMARC) score -= 8;
+  if (!dns.hasDKIM) score -= 7;
+  if (!dns.hasMX) score -= 2;
 
   if (!headers.error) {
     if (headers.missingCount >= 5) score -= 15;
@@ -46,7 +47,7 @@ function getRecommendedPolicies(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult
   if (!ssl.hasSSL || ssl.expired || (ssl.daysUntilExpiry !== null && ssl.daysUntilExpiry < 30)) {
     policies.push("remote-work");
   }
-  if (!dns.hasSPF || !dns.hasDMARC) {
+  if (!dns.hasSPF || !dns.hasDMARC || !dns.hasDKIM) {
     policies.push("acceptable-use");
   }
   if (!policies.includes("backup")) policies.push("backup");
@@ -88,8 +89,11 @@ function buildFindings(ssl: SSLResult, hibp: HIBPResult, subdomains: SubdomainsR
   if (!dns.hasDMARC) {
     findings.push({ severity: "medium", category: "DNS", message: "Aucun enregistrement DMARC configuré" });
   }
-  if (dns.hasSPF && dns.hasDMARC) {
-    findings.push({ severity: "low", category: "DNS", message: "SPF et DMARC correctement configurés" });
+  if (!dns.hasDKIM) {
+    findings.push({ severity: "medium", category: "DNS", message: "Aucune signature DKIM détectée (sélecteurs courants)" });
+  }
+  if (dns.hasSPF && dns.hasDMARC && dns.hasDKIM) {
+    findings.push({ severity: "low", category: "DNS", message: "SPF, DKIM et DMARC correctement configurés" });
   }
 
   findings.push({
