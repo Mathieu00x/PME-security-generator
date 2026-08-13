@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { checkSSL, SSLResult } from "@/lib/scanners/ssl";
 import { checkHIBP, HIBPResult } from "@/lib/scanners/hibp";
@@ -144,6 +145,40 @@ function buildFindings(ssl: SSLResult, hibp: HIBPResult, subdomains: SubdomainsR
   return findings;
 }
 
+// Best-effort: a non-technical 2-sentence summary for the top of the report.
+// Never blocks or fails the scan — if the model call errors out, the report
+// just renders without it.
+async function generateExecutiveSummary(domain: string, riskScore: number, findings: ScanFinding[]): Promise<string | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+
+  try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const findingsList = findings.map((f) => `- [${f.severity}] ${f.category} : ${f.message}`).join("\n");
+
+    const message = await anthropic.messages.create({
+      model: "claude-opus-4-5",
+      max_tokens: 200,
+      system:
+        "Tu rédiges des résumés exécutifs de diagnostics de cybersécurité pour des dirigeants non techniques. " +
+        "Règles strictes : maximum 2 phrases ; aucun jargon ni acronyme technique non expliqué (SSL, SPF, DKIM, etc.) ; " +
+        "ton direct, factuel et actionnable, sans être alarmiste ; ne jamais inventer de statistique, pourcentage ou " +
+        "comparaison avec d'autres entreprises qui ne figure pas dans les données fournies. Réponds uniquement avec le résumé, sans préambule.",
+      messages: [
+        {
+          role: "user",
+          content: `Domaine analysé : ${domain}\nScore de sécurité : ${riskScore}/100\nConstats du diagnostic :\n${findingsList}`,
+        },
+      ],
+    });
+
+    const text = message.content[0]?.type === "text" ? message.content[0].text.trim() : "";
+    return text || null;
+  } catch (err) {
+    console.error("Executive summary generation failed:", err);
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { domain } = (await req.json()) as { domain: string };
@@ -183,6 +218,7 @@ export async function POST(req: NextRequest) {
     const riskScore = calculateRiskScore(scoreBreakdown);
     const recommendedPolicies = getRecommendedPolicies(ssl, hibp, dns);
     const findings = buildFindings(ssl, hibp, subdomains, dns, securityHeaders);
+    const executiveSummary = await generateExecutiveSummary(domain, riskScore, findings);
 
     const { data: report, error } = await supabase
       .from("attack_surface_reports")
@@ -199,6 +235,7 @@ export async function POST(req: NextRequest) {
         security_headers: securityHeaders,
         findings,
         recommended_policies: recommendedPolicies,
+        executive_summary: executiveSummary,
       })
       .select()
       .single();
@@ -208,7 +245,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to save report" }, { status: 500 });
     }
 
-    return NextResponse.json({ reportId: report.id, riskScore, scoreBreakdown, findings, recommendedPolicies });
+    return NextResponse.json({ reportId: report.id, riskScore, scoreBreakdown, findings, recommendedPolicies, executiveSummary });
   } catch (err) {
     console.error("Scan error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

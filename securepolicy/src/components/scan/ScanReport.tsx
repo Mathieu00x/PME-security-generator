@@ -44,6 +44,13 @@ export function ScanReport({ report }: { report: AttackSurfaceReport }) {
         </Button>
       </div>
 
+      {/* AI executive summary */}
+      {report.executive_summary && (
+        <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-5 py-4">
+          <p className="text-sm text-blue-900 leading-relaxed">{report.executive_summary}</p>
+        </div>
+      )}
+
       {/* Risk score */}
       <Card className="mb-4 flex items-center justify-center py-8">
         <RiskGauge score={report.risk_score} />
