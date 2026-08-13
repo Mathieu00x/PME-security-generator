@@ -1620,11 +1620,16 @@ export const translations: Record<Lang, Record<string, string>> = {
 };
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("fr");
+  const [lang, setLangState] = useState<Lang>("en");
 
   useEffect(() => {
     const saved = localStorage.getItem("sp-lang") as Lang | null;
-    if (saved === "en" || saved === "fr") setLangState(saved);
+    if (saved === "en" || saved === "fr") {
+      setLangState(saved);
+    } else {
+      const browserLang = navigator.language?.startsWith("fr") ? "fr" : "en";
+      setLangState(browserLang);
+    }
   }, []);
 
   function setLang(l: Lang) {
