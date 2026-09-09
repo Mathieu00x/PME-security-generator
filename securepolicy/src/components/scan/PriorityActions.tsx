@@ -50,8 +50,9 @@ function buildActions(report: AttackSurfaceReport): Action[] {
 
   if (!dns.hasSPF) actionable.push({ severity: "medium", key: "priorityAction.dns.spfMissing" });
   if (!dns.hasDMARC) actionable.push({ severity: "medium", key: "priorityAction.dns.dmarcMissing" });
-  if (!dns.hasDKIM) actionable.push({ severity: "medium", key: "priorityAction.dns.dkimMissing" });
-  if (dns.hasSPF && dns.hasDMARC && dns.hasDKIM) good.push({ severity: "low", key: "priorityAction.dns.good" });
+  if (dns.dkimStatus === "not_found") actionable.push({ severity: "medium", key: "priorityAction.dns.dkimMissing" });
+  else if (dns.dkimStatus === "unknown") actionable.push({ severity: "low", key: "priorityAction.dns.dkimUnknown" });
+  if (dns.hasSPF && dns.hasDMARC && dns.dkimStatus === "found") good.push({ severity: "low", key: "priorityAction.dns.good" });
 
   if (!headers.error) {
     if (!headers.hasHSTS) actionable.push({ severity: "medium", key: "priorityAction.headers.hstsMissing" });

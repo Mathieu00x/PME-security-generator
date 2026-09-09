@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Lock, Mail, Globe, Layers, RefreshCw, CheckCircle2, XCircle, ShieldCheck, PartyPopper, ArrowRight } from "lucide-react";
+import { Lock, Mail, Globe, Layers, RefreshCw, CheckCircle2, XCircle, HelpCircle, ShieldCheck, PartyPopper, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { AttackSurfaceReport } from "@/types";
@@ -91,13 +91,15 @@ export function ScanReport({ report, isFirstScan }: { report: AttackSurfaceRepor
               <div key={label} className="flex items-center gap-3">
                 <span className="text-xs text-gray-600 w-56 flex-shrink-0">{label}</span>
                 <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${score >= 20 ? "bg-green-500" : score >= 12 ? "bg-yellow-500" : "bg-red-500"}`}
-                    style={{ width: `${(score / 25) * 100}%` }}
-                  />
+                  {score !== null && (
+                    <div
+                      className={`h-full rounded-full ${score >= 20 ? "bg-green-500" : score >= 12 ? "bg-yellow-500" : "bg-red-500"}`}
+                      style={{ width: `${(score / 25) * 100}%` }}
+                    />
+                  )}
                 </div>
-                <span className="text-xs font-medium text-gray-900 w-14 text-right flex-shrink-0">
-                  {t("scan.report.outOf25", { score })}
+                <span className={`text-xs font-medium w-24 text-right flex-shrink-0 ${score === null ? "text-gray-400 italic" : "text-gray-900"}`}>
+                  {score === null ? t("scan.report.checkUnavailable") : t("scan.report.outOf25", { score })}
                 </span>
               </div>
             ))}
@@ -151,13 +153,21 @@ export function ScanReport({ report, isFirstScan }: { report: AttackSurfaceRepor
           </div>
           <div className="flex flex-col gap-1 text-xs text-gray-600">
             {[
-              { label: "SPF", ok: report.dns.hasSPF },
-              { label: "DKIM", ok: report.dns.hasDKIM },
-              { label: "DMARC", ok: report.dns.hasDMARC },
-              { label: "MX", ok: report.dns.hasMX },
-            ].map(({ label, ok }) => (
+              { label: "SPF", state: report.dns.hasSPF ? "ok" : "missing" },
+              // DKIM has a third, distinct state: "unknown" means the lookup
+              // itself failed, not that DKIM was confirmed absent.
+              { label: "DKIM", state: report.dns.dkimStatus === "found" ? "ok" : report.dns.dkimStatus === "unknown" ? "unknown" : "missing" },
+              { label: "DMARC", state: report.dns.hasDMARC ? "ok" : "missing" },
+              { label: "MX", state: report.dns.hasMX ? "ok" : "missing" },
+            ].map(({ label, state }) => (
               <span key={label} className="flex items-center gap-1.5">
-                {ok ? <CheckCircle2 size={12} className="text-green-500" /> : <XCircle size={12} className="text-red-400" />}
+                {state === "ok" ? (
+                  <CheckCircle2 size={12} className="text-green-500" />
+                ) : state === "unknown" ? (
+                  <HelpCircle size={12} className="text-gray-400" />
+                ) : (
+                  <XCircle size={12} className="text-red-400" />
+                )}
                 {label}
               </span>
             ))}

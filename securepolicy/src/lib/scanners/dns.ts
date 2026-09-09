@@ -1,8 +1,16 @@
+// "found": a matching DKIM record was located under one of the common
+// selectors. "not_found": every selector lookup completed successfully with
+// no match — DKIM is genuinely absent under those selectors (though a
+// custom, un-probed selector could still exist). "unknown": every selector
+// lookup itself failed (network/DNS resolution error), so we couldn't
+// determine anything — this must not be treated the same as "not_found".
+export type DKIMStatus = "found" | "not_found" | "unknown";
+
 export interface DNSResult {
   hasMX: boolean;
   hasSPF: boolean;
   hasDMARC: boolean;
-  hasDKIM: boolean;
+  dkimStatus: DKIMStatus;
   spfRecord: string | null;
   dmarcRecord: string | null;
   dkimSelector: string | null;
@@ -32,21 +40,24 @@ async function dnsLookup(name: string, type: string): Promise<string[]> {
   return (data.Answer ?? []).map((r) => r.data);
 }
 
-async function checkDKIM(domain: string): Promise<{ hasDKIM: boolean; dkimSelector: string | null }> {
+async function checkDKIM(domain: string): Promise<{ dkimStatus: DKIMStatus; dkimSelector: string | null }> {
   const results = await Promise.all(
     DKIM_SELECTORS.map(async (selector) => {
       try {
         const records = await dnsLookup(`${selector}._domainkey.${domain}`, "TXT");
         const found = records.some((r) => r.includes("v=DKIM1") || r.includes("p="));
-        return found ? selector : null;
+        return { selector, found, failed: false };
       } catch {
-        return null;
+        return { selector, found: false, failed: true };
       }
     })
   );
 
-  const dkimSelector = results.find((s) => s !== null) ?? null;
-  return { hasDKIM: dkimSelector !== null, dkimSelector };
+  const match = results.find((r) => r.found);
+  if (match) return { dkimStatus: "found", dkimSelector: match.selector };
+
+  const allFailed = results.every((r) => r.failed);
+  return { dkimStatus: allFailed ? "unknown" : "not_found", dkimSelector: null };
 }
 
 export async function checkDNS(domain: string): Promise<DNSResult> {
@@ -65,7 +76,7 @@ export async function checkDNS(domain: string): Promise<DNSResult> {
       hasMX: mxRecords.length > 0,
       hasSPF: !!spfRecord,
       hasDMARC: !!dmarcRecord,
-      hasDKIM: dkim.hasDKIM,
+      dkimStatus: dkim.dkimStatus,
       spfRecord,
       dmarcRecord,
       dkimSelector: dkim.dkimSelector,
@@ -76,7 +87,7 @@ export async function checkDNS(domain: string): Promise<DNSResult> {
       hasMX: false,
       hasSPF: false,
       hasDMARC: false,
-      hasDKIM: false,
+      dkimStatus: "unknown",
       spfRecord: null,
       dmarcRecord: null,
       dkimSelector: null,

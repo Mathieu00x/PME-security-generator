@@ -137,7 +137,7 @@ DONNÉES DE SCAN RÉEL (priorité haute)
 - Emails compromis : ${scan.emails_compromis.compromisedCount}
 - SSL : ${scan.ssl.grade ?? (scan.ssl.hasSSL ? "Configuré, grade inconnu" : "Non configuré")}
 - SPF : ${scan.dns.hasSPF ? "Configuré" : "Manquant"}
-- DKIM : ${scan.dns.hasDKIM ? "Configuré" : "Manquant"}
+- DKIM : ${scan.dns.dkimStatus === "found" ? "Configuré" : scan.dns.dkimStatus === "unknown" ? "Non vérifiable (échec DNS)" : "Manquant"}
 - DMARC : ${scan.dns.hasDMARC ? "Configuré" : "Manquant"}
 - Sous-domaines exposés : ${scan.subdomains.count}
 Génère une politique qui adresse directement ces vulnérabilités détectées.`;

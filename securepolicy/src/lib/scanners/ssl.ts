@@ -1,4 +1,5 @@
 import * as tls from "node:tls";
+import { resolveSafeIp, UnsafeTargetError } from "./ssrfGuard";
 
 export interface SSLResult {
   grade: string | null;
@@ -31,7 +32,18 @@ function gradeFor(protocol: string | null, trusted: boolean, expired: boolean): 
   }
 }
 
-export function checkSSL(domain: string): Promise<SSLResult> {
+export async function checkSSL(domain: string): Promise<SSLResult> {
+  // Resolve and validate the target IP ourselves, then connect to that exact
+  // IP (SNI/Host stays the domain) so a DNS-rebinding attacker can't get us
+  // to open a TLS connection to a private/internal address — see ssrfGuard.ts.
+  let safeIp: string;
+  try {
+    safeIp = (await resolveSafeIp(domain)).ip;
+  } catch (err) {
+    const message = err instanceof UnsafeTargetError ? err.message : "DNS resolution failed";
+    return { grade: null, daysUntilExpiry: null, expired: false, hasSSL: false, error: message };
+  }
+
   return new Promise((resolve) => {
     let settled = false;
     const finish = (result: SSLResult) => {
@@ -42,7 +54,7 @@ export function checkSSL(domain: string): Promise<SSLResult> {
 
     const socket = tls.connect(
       {
-        host: domain,
+        host: safeIp,
         port: 443,
         servername: domain,
         rejectUnauthorized: false,

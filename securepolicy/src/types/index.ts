@@ -225,8 +225,13 @@ export interface ScanFinding {
 export interface ScoreBreakdown {
   ssl: number;
   dnsEmail: number;
-  dataExposure: number;
-  headers: number;
+  // null when the underlying check itself failed — dataExposure is null
+  // when HIBP errors (e.g. the domain isn't verified in HIBP's dashboard,
+  // which is true for virtually every third-party domain scanned), headers
+  // is null when the headers fetch fails. Excluded from risk_score rather
+  // than defaulting to a false "all clear" 25/25.
+  dataExposure: number | null;
+  headers: number | null;
 }
 
 export interface AttackSurfaceReport {

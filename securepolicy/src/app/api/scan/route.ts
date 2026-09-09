@@ -23,7 +23,13 @@ function sslCategoryScore(ssl: SSLResult): number {
   return 25;
 }
 
-function dataExposureCategoryScore(hibp: HIBPResult): number {
+// Returns null (not evaluated) rather than defaulting to a false "clean"
+// 25/25 when the check itself failed — HIBP's breacheddomain endpoint only
+// works for domains verified in the API key owner's own dashboard, so this
+// errors on essentially every third-party domain SecurePilot actually scans.
+// A silent 25/25 here was inflating every customer's risk score.
+function dataExposureCategoryScore(hibp: HIBPResult): number | null {
+  if (hibp.error) return null;
   if (hibp.compromisedCount > 10) return 0;
   if (hibp.compromisedCount > 3) return 10;
   if (hibp.compromisedCount > 0) return 17;
@@ -34,13 +40,17 @@ function dnsEmailCategoryScore(dns: DNSResult): number {
   let score = 25;
   if (!dns.hasSPF) score -= 8;
   if (!dns.hasDMARC) score -= 8;
-  if (!dns.hasDKIM) score -= 7;
+  // Only penalize a confirmed absence — an "unknown" (the selector lookups
+  // themselves failed) isn't evidence DKIM is missing, so it isn't scored.
+  if (dns.dkimStatus === "not_found") score -= 7;
   if (!dns.hasMX) score -= 2;
   return Math.max(0, score);
 }
 
-function headersCategoryScore(headers: SecurityHeadersResult): number {
-  if (headers.error) return 25;
+// Same fix as dataExposureCategoryScore: an errored headers check was also
+// silently scoring a perfect 25/25 instead of being excluded.
+function headersCategoryScore(headers: SecurityHeadersResult): number | null {
+  if (headers.error) return null;
   const totalHeaders = 6;
   const present = totalHeaders - headers.missingCount;
   return Math.round((present / totalHeaders) * 25);
@@ -55,8 +65,17 @@ function computeScoreBreakdown(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult,
   };
 }
 
+// Sums only the categories that were actually evaluated and rescales to a
+// 0-100 total, instead of letting an unevaluated (null) category silently
+// count as 0 out of the full 100 — which would understate risk just as
+// wrongly as the old code overstated it by scoring it 25/25.
 function calculateRiskScore(breakdown: ScoreBreakdown): number {
-  return breakdown.ssl + breakdown.dnsEmail + breakdown.dataExposure + breakdown.headers;
+  const categories = [breakdown.ssl, breakdown.dnsEmail, breakdown.dataExposure, breakdown.headers];
+  const evaluated = categories.filter((c): c is number => c !== null);
+  if (evaluated.length === 0) return 0;
+  const earned = evaluated.reduce((sum, c) => sum + c, 0);
+  const possible = evaluated.length * 25;
+  return Math.round((earned / possible) * 100);
 }
 
 function getRecommendedPolicies(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult): PolicyType[] {
@@ -69,7 +88,7 @@ function getRecommendedPolicies(ssl: SSLResult, hibp: HIBPResult, dns: DNSResult
   if (!ssl.hasSSL || ssl.expired || (ssl.daysUntilExpiry !== null && ssl.daysUntilExpiry < 30)) {
     policies.push("remote-work");
   }
-  if (!dns.hasSPF || !dns.hasDMARC || !dns.hasDKIM) {
+  if (!dns.hasSPF || !dns.hasDMARC || dns.dkimStatus === "not_found") {
     policies.push("acceptable-use");
   }
   if (!policies.includes("backup")) policies.push("backup");
@@ -111,10 +130,12 @@ function buildFindings(ssl: SSLResult, hibp: HIBPResult, subdomains: SubdomainsR
   if (!dns.hasDMARC) {
     findings.push({ severity: "medium", category: "DNS", message: "Aucun enregistrement DMARC configuré" });
   }
-  if (!dns.hasDKIM) {
+  if (dns.dkimStatus === "not_found") {
     findings.push({ severity: "medium", category: "DNS", message: "Aucune signature DKIM détectée (sélecteurs courants)" });
+  } else if (dns.dkimStatus === "unknown") {
+    findings.push({ severity: "low", category: "DNS", message: "Vérification DKIM impossible (échec de résolution DNS)" });
   }
-  if (dns.hasSPF && dns.hasDMARC && dns.hasDKIM) {
+  if (dns.hasSPF && dns.hasDMARC && dns.dkimStatus === "found") {
     findings.push({ severity: "low", category: "DNS", message: "SPF, DKIM et DMARC correctement configurés" });
   }
 

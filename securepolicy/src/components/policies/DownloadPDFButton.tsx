@@ -142,23 +142,33 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
 
       y += 50;
 
-      // Security score badge
+      // Security score badge — the full concept name ("External Security
+      // Posture Score") doesn't fit inside a compact colored pill, so it's
+      // a small-caps label above a smaller number-only badge instead, the
+      // same pattern used for "ALIGNED WITH:" / "EXECUTIVE SUMMARY" below.
       if (policy.security_score) {
         const score = policy.security_score.securityScore;
         const color = score >= 70 ? [34, 197, 94] : score >= 40 ? [245, 158, 11] : [239, 68, 68];
+
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+        doc.text(t("dashboard.securityScore").toUpperCase(), marginL, y);
+        y += 5;
+
         doc.setFillColor(color[0], color[1], color[2]);
-        doc.roundedRect(marginL, y, 50, 16, 2, 2, "F");
+        doc.roundedRect(marginL, y, 30, 14, 2, 2, "F");
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(8);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
-        doc.text(`${t("dashboard.securityScore")}: ${score}/100`, marginL + 25, y + 10, { align: "center" });
+        doc.text(`${score}/100`, marginL + 15, y + 9, { align: "center" });
 
         doc.setTextColor(100, 116, 139);
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         const riskLevelKey = `risk.${policy.security_score.riskLevel.toLowerCase()}` as "risk.low" | "risk.medium" | "risk.high";
-        doc.text(`${t("policyDetail.riskLevel")}: ${t(riskLevelKey)}`, marginL + 58, y + 10);
-        y += 24;
+        doc.text(`${t("policyDetail.riskLevel")}: ${t(riskLevelKey)}`, marginL + 38, y + 9);
+        y += 22;
       }
 
       // Compliance badges on cover
