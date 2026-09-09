@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Notion export requires the Pro plan or higher." }, { status: 403 });
   }
 
-  const { policyId } = (await req.json()) as { policyId: string };
+  const { policyId, lang } = (await req.json()) as { policyId: string; lang?: "en" | "fr" };
 
   const [{ data: policy }, { data: integration }] = await Promise.all([
     supabase.from("policies").select("*").eq("id", policyId).eq("user_id", user.id).single(),
@@ -39,10 +39,11 @@ export async function POST(req: NextRequest) {
 
   const { token, parentPageId } = integration.config as NotionIntegrationConfig;
   const p = policy as Policy;
+  const exportLang = lang || "en";
   const blocks = [
-    ...(p.security_score?.executiveSummary ? executiveSummaryToNotionBlocks(p.security_score.executiveSummary) : []),
+    ...(p.security_score?.executiveSummary ? executiveSummaryToNotionBlocks(p.security_score.executiveSummary, exportLang) : []),
     ...contentToNotionBlocks(p.content),
-    ...(p.security_score ? securityScoreToNotionBlocks(p.security_score) : []),
+    ...(p.security_score ? securityScoreToNotionBlocks(p.security_score, exportLang) : []),
   ];
 
   const notionHeaders = {

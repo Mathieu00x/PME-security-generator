@@ -12,12 +12,13 @@ export default async function SharedPolicyPage({
 }) {
   const supabase = await createClient();
 
+  // Reads through a SECURITY DEFINER RPC (not a direct table select) so the
+  // exact share_token match is enforced by the function itself, not just by
+  // this call's .eq() filter — see the RLS audit note in supabase-schema.sql
+  // for why a table-level policy can't safely gate this.
   const { data: policy } = await supabase
-    .from("policies")
-    .select("id, user_id, title, content, version, updated_at, security_score")
-    .eq("share_token", params.token)
-    .eq("share_enabled", true)
-    .single();
+    .rpc("get_shared_policy", { p_token: params.token })
+    .maybeSingle();
 
   if (!policy) notFound();
 

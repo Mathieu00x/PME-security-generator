@@ -108,10 +108,11 @@ export function SecurityScoreClient({
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{t("dashboard.securityScore")}</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t("securityScore.pageTitle")}</h1>
         <p className="text-gray-500 text-sm mt-1">
           {t(allPolicies.length === 1 ? "securityScore.subtitle.one" : "securityScore.subtitle.other", { count: allPolicies.length })}
         </p>
+        <p className="text-gray-400 text-xs mt-0.5">{t("securityScore.methodologyNote")}</p>
       </div>
 
       {/* Executive Summary */}
@@ -277,7 +278,7 @@ export function SecurityScoreClient({
                 : latestScore.gapAnalysis.associatedRisk === "Medium" ? "bg-yellow-100 text-yellow-700"
                 : "bg-green-100 text-green-700"
               }`}>
-                {latestScore.gapAnalysis.associatedRisk}
+                {t(`risk.${latestScore.gapAnalysis.associatedRisk.toLowerCase()}` as "risk.low" | "risk.medium" | "risk.high")}
               </span>
             </div>
           </div>

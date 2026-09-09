@@ -88,7 +88,7 @@ export function SharedPolicyView({
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">{t("policyDetail.outOf100")}</p>
-                    <p className="text-sm font-medium text-gray-700">{p.security_score.riskLevel} Risk</p>
+                    <p className="text-sm font-medium text-gray-700">{t(`scan.risk.${p.security_score.riskLevel.toLowerCase()}` as "scan.risk.low" | "scan.risk.medium" | "scan.risk.high")}</p>
                   </div>
                 </div>
               </div>

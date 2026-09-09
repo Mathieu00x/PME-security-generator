@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Confluence export requires the Pro plan or higher." }, { status: 403 });
   }
 
-  const { policyId } = (await req.json()) as { policyId: string };
+  const { policyId, lang } = (await req.json()) as { policyId: string; lang?: "en" | "fr" };
 
   const [{ data: policy }, { data: integration }] = await Promise.all([
     supabase.from("policies").select("*").eq("id", policyId).eq("user_id", user.id).single(),
@@ -54,10 +54,11 @@ export async function POST(req: NextRequest) {
   }
 
   const p = policy as Policy;
+  const exportLang = lang || "en";
   const storageHtml = [
-    p.security_score?.executiveSummary ? executiveSummaryToConfluenceStorage(p.security_score.executiveSummary) : "",
+    p.security_score?.executiveSummary ? executiveSummaryToConfluenceStorage(p.security_score.executiveSummary, exportLang) : "",
     contentToConfluenceStorage(p.content),
-    p.security_score ? securityScoreToConfluenceStorage(p.security_score) : "",
+    p.security_score ? securityScoreToConfluenceStorage(p.security_score, exportLang) : "",
   ]
     .filter(Boolean)
     .join("\n");

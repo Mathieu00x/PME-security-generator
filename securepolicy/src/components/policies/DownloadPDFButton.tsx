@@ -3,8 +3,9 @@ import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { Policy, Branding } from "@/types";
 import { COMPLIANCE_STANDARD_LABELS } from "@/lib/complianceLabels";
-import { ARTIFACT_TITLES_EN } from "@/lib/artifacts";
+import { ARTIFACT_DEFINITIONS } from "@/lib/artifacts";
 import { resolveBranding, hexToRgb } from "@/lib/branding";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props {
   policy: Policy;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function DownloadPDFButton({ policy, companyName = "Your Company", branding, iconOnly = false }: Props) {
+  const { t, dateLocale } = useLanguage();
   const [loading, setLoading] = useState(false);
   const brand = branding || resolveBranding(null);
   const [brR, brG, brB] = hexToRgb(brand.color);
@@ -49,6 +51,11 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           y = contentTopY;
         }
       };
+
+      const priorityKey = (p: string) => `sidebar.actionChecklist.priority.${p}` as
+        | "sidebar.actionChecklist.priority.high"
+        | "sidebar.actionChecklist.priority.medium"
+        | "sidebar.actionChecklist.priority.low";
 
       const drawHeader = () => {
         doc.setFillColor(brR, brG, brB);
@@ -90,7 +97,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(191, 219, 254);
-      doc.text("AI-Powered Security Documentation", marginL + 18, 26);
+      doc.text(t("policyDetail.tagline"), marginL + 18, 26);
 
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(22);
@@ -107,12 +114,12 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       doc.roundedRect(marginL, y, contentW, 40, 2, 2, "FD");
 
       const meta = [
-        { label: "Company", value: companyName },
-        { label: "Version", value: policy.version || "1.0" },
-        { label: "Date", value: new Date(policy.created_at).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }) },
-        { label: "Review Date", value: new Date(new Date(policy.created_at).setFullYear(new Date(policy.created_at).getFullYear() + 1)).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }) },
-        { label: "Status", value: policy.status.charAt(0).toUpperCase() + policy.status.slice(1) },
-        { label: "Classification", value: "Confidential" },
+        { label: t("policyDetail.company"), value: companyName },
+        { label: t("policyDetail.version"), value: policy.version || "1.0" },
+        { label: t("artifact.col.date"), value: new Date(policy.created_at).toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric" }) },
+        { label: t("policyDetail.reviewDate"), value: new Date(new Date(policy.created_at).setFullYear(new Date(policy.created_at).getFullYear() + 1)).toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric" }) },
+        { label: t("policiesList.status"), value: policy.status.charAt(0).toUpperCase() + policy.status.slice(1) },
+        { label: t("policyDetail.classification"), value: t("policyDetail.confidential") },
       ];
 
       const colW = contentW / 2;
@@ -144,12 +151,13 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
-        doc.text(`Security Score: ${score}/100`, marginL + 25, y + 10, { align: "center" });
+        doc.text(`${t("dashboard.securityScore")}: ${score}/100`, marginL + 25, y + 10, { align: "center" });
 
         doc.setTextColor(100, 116, 139);
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
-        doc.text(`Risk Level: ${policy.security_score.riskLevel}`, marginL + 58, y + 10);
+        const riskLevelKey = `risk.${policy.security_score.riskLevel.toLowerCase()}` as "risk.low" | "risk.medium" | "risk.high";
+        doc.text(`${t("policyDetail.riskLevel")}: ${t(riskLevelKey)}`, marginL + 58, y + 10);
         y += 24;
       }
 
@@ -166,7 +174,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           doc.setFontSize(7);
           doc.setFont("helvetica", "normal");
           doc.setTextColor(100, 116, 139);
-          doc.text("ALIGNED WITH:", marginL, y);
+          doc.text(t("complianceBadges.alignedWith").toUpperCase(), marginL, y);
           let bx = marginL + 24;
           standards.forEach(s => {
             doc.setFillColor(s.color[0], s.color[1], s.color[2]);
@@ -188,7 +196,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
         doc.setFontSize(7);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(100, 116, 139);
-        doc.text("EXECUTIVE SUMMARY", marginL, y);
+        doc.text(t("securityScore.execSummary").toUpperCase(), marginL, y);
         y += 6;
         doc.setFillColor(248, 250, 252);
         doc.setDrawColor(226, 232, 240);
@@ -296,7 +304,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           doc.setFontSize(12);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(15, 23, 42);
-          doc.text("Mapping aux normes", marginL + 6, y + 2);
+          doc.text(t("policyDetail.complianceMapping"), marginL + 6, y + 2);
           y += 14;
 
           entries.forEach(([key, codes]) => {
@@ -335,13 +343,14 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(15, 23, 42);
-        doc.text("Analyse des écarts (Gap Analysis)", marginL + 6, y + 2);
+        doc.text(t("securityScore.gapAnalysis"), marginL + 6, y + 2);
         y += 16;
 
+        const associatedRiskKey = `risk.${gap.associatedRisk.toLowerCase()}` as "risk.low" | "risk.medium" | "risk.high";
         const stats = [
-          { label: "Conformité actuelle", value: `${gap.compliancePercentage}%` },
-          { label: "Contrôles manquants", value: `${gap.missingControlsCount}` },
-          { label: "Risque associé", value: gap.associatedRisk },
+          { key: "compliance", label: t("securityScore.currentCompliance"), value: `${gap.compliancePercentage}%` },
+          { key: "missing", label: t("securityScore.missingControls"), value: `${gap.missingControlsCount}` },
+          { key: "risk", label: t("securityScore.associatedRisk"), value: t(associatedRiskKey) },
         ];
         const statW = contentW / 3;
         stats.forEach((s, i) => {
@@ -353,13 +362,13 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           doc.setFontSize(16);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(
-            s.label === "Risque associé"
+            s.key === "risk"
               ? (gap.associatedRisk === "High" ? 239 : gap.associatedRisk === "Medium" ? 245 : 34)
               : 15,
-            s.label === "Risque associé"
+            s.key === "risk"
               ? (gap.associatedRisk === "High" ? 68 : gap.associatedRisk === "Medium" ? 158 : 197)
               : 23,
-            s.label === "Risque associé"
+            s.key === "risk"
               ? (gap.associatedRisk === "High" ? 68 : gap.associatedRisk === "Medium" ? 11 : 94)
               : 42
           );
@@ -375,7 +384,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           doc.setFontSize(9);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(15, 23, 42);
-          doc.text("Contrôles manquants", marginL, y);
+          doc.text(t("securityScore.missingControls"), marginL, y);
           y += 7;
 
           gap.missingControls.forEach((mc) => {
@@ -404,13 +413,13 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(15, 23, 42);
-        doc.text("Audit Evidence", marginL + 6, y + 2);
+        doc.text(t("audit.pageTitle"), marginL + 6, y + 2);
         y += 8;
 
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(100, 116, 139);
-        doc.text("Registers you should maintain to demonstrate compliance with this policy.", marginL, y);
+        doc.text(t("sidebar.auditEvidence.desc"), marginL, y);
         y += 10;
 
         auditEvidence.forEach((evidence) => {
@@ -420,7 +429,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           doc.setFontSize(9);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(brR, brG, brB);
-          doc.text(ARTIFACT_TITLES_EN[evidence.type] || evidence.type, marginL, y);
+          doc.text(t(ARTIFACT_DEFINITIONS[evidence.type].titleKey), marginL, y);
           y += 5;
           doc.setFontSize(8);
           doc.setFont("helvetica", "normal");
@@ -443,18 +452,13 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(15, 23, 42);
-        doc.text("Recommandations priorisées", marginL + 6, y + 2);
+        doc.text(t("securityScore.recommendations"), marginL + 6, y + 2);
         y += 14;
 
         const REC_PRIORITY_COLORS: Record<string, [number, number, number]> = {
           high: [239, 68, 68],
           medium: [245, 158, 11],
           low: [59, 130, 246],
-        };
-        const REC_PRIORITY_LABELS: Record<string, string> = {
-          high: "HAUTE",
-          medium: "MOYENNE",
-          low: "FAIBLE",
         };
 
         recommendations.forEach((rec) => {
@@ -465,7 +469,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(5);
           doc.setFont("helvetica", "bold");
-          doc.text(REC_PRIORITY_LABELS[rec.priority] || rec.priority.toUpperCase(), marginL + 8, y, { align: "center" });
+          doc.text(t(priorityKey(rec.priority)).toUpperCase(), marginL + 8, y, { align: "center" });
 
           doc.setFontSize(8);
           doc.setFont("helvetica", "normal");
@@ -489,10 +493,10 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(15, 23, 42);
-        doc.text("Bonnes pratiques", marginL + 6, y + 2);
+        doc.text(t("sidebar.bestPractices.title"), marginL + 6, y + 2);
         y += 14;
 
-        // ✅ À faire
+        // ✅ Do
         if (bp.dos.length) {
           doc.setFillColor(240, 253, 244);
           doc.setDrawColor(187, 247, 208);
@@ -501,7 +505,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           doc.setFontSize(9);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(21, 128, 61);
-          doc.text("À faire", marginL + 4, y + 4);
+          doc.text(t("policyDetail.doHeading"), marginL + 4, y + 4);
           y += 10;
 
           bp.dos.forEach((item) => {
@@ -519,7 +523,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           y += 4;
         }
 
-        // ❌ À éviter
+        // ❌ Don't
         if (bp.donts.length) {
           checkPageBreak(10 + bp.donts.length * 8);
           doc.setFillColor(254, 242, 242);
@@ -529,7 +533,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           doc.setFontSize(9);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(185, 28, 28);
-          doc.text("À éviter", marginL + 4, y + 4);
+          doc.text(t("policyDetail.dontHeading"), marginL + 4, y + 4);
           y += 10;
 
           bp.donts.forEach((item) => {
@@ -558,18 +562,13 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(15, 23, 42);
-        doc.text("Actions prioritaires", marginL + 6, y + 2);
+        doc.text(t("sidebar.actionChecklist.title"), marginL + 6, y + 2);
         y += 14;
 
         const PRIORITY_COLORS: Record<string, [number,number,number]> = {
           high: [239, 68, 68],
           medium: [245, 158, 11],
           low: [59, 130, 246],
-        };
-        const PRIORITY_LABELS: Record<string, string> = {
-          high: "HAUTE",
-          medium: "MOYENNE",
-          low: "FAIBLE",
         };
 
         actions.forEach((item) => {
@@ -586,7 +585,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(5);
           doc.setFont("helvetica", "bold");
-          doc.text(PRIORITY_LABELS[item.priority] || item.priority.toUpperCase(), marginL + 14, y, { align: "center" });
+          doc.text(t(priorityKey(item.priority)).toUpperCase(), marginL + 14, y, { align: "center" });
 
           // Task
           doc.setFontSize(8);
@@ -600,7 +599,10 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
           if (item.tool) {
             doc.setFontSize(7);
             doc.setTextColor(brR, brG, brB);
-            doc.text(`→ ${item.tool}`, marginL + 24, y + 1);
+            // jsPDF's built-in "helvetica" font only supports WinAnsiEncoding, which
+            // has no glyph for U+2192 (→) — using it here corrupted the glyph and the
+            // kerning of everything after it, so a plain ASCII arrow is used instead.
+            doc.text(`-> ${item.tool}`, marginL + 24, y + 1);
             y += 5;
           }
 
@@ -618,7 +620,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
         doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(148, 163, 184);
-        doc.text(`${policy.title} — v${policy.version || "1.0"} — CONFIDENTIAL`, marginL, pageH - 8);
+        doc.text(`${policy.title} — v${policy.version || "1.0"} — ${t("policyDetail.confidential").toUpperCase()}`, marginL, pageH - 8);
         doc.text(`${i} / ${totalPages}`, pageW - marginR, pageH - 8, { align: "right" });
       }
 
@@ -626,7 +628,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       doc.save(filename);
     } catch (err) {
       console.error("PDF error:", err);
-      alert("Failed to generate PDF. Please try again.");
+      alert(t("register.pdfFailed"));
     } finally {
       setLoading(false);
     }
@@ -637,7 +639,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       <button
         onClick={handleDownload}
         disabled={loading}
-        title="Download PDF"
+        title={t("policyDetail.downloadPdf")}
         className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
@@ -652,7 +654,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       className="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-white"
     >
       {loading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-      {loading ? "Generating…" : "Download PDF"}
+      {loading ? t("audit.generating") : t("policyDetail.downloadPdf")}
     </button>
   );
 }

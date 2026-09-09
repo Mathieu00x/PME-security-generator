@@ -44,7 +44,7 @@ export function PolicyDetailScoreCard({ score, riskLevel }: { score: number; ris
         </div>
         <div>
           <p className="text-xs text-gray-500">{t("policyDetail.outOf100")}</p>
-          <p className="text-sm font-medium text-gray-700">{riskLevel} Risk</p>
+          <p className="text-sm font-medium text-gray-700">{t(`scan.risk.${riskLevel.toLowerCase()}` as "scan.risk.low" | "scan.risk.medium" | "scan.risk.high")}</p>
         </div>
       </div>
       <Link href="/security-score" className="text-xs text-blue-600 hover:underline">

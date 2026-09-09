@@ -4,8 +4,19 @@
 
 import { SecurityScore } from "@/types";
 import { COMPLIANCE_STANDARD_LABELS } from "@/lib/complianceLabels";
-import { ARTIFACT_TITLES_EN } from "@/lib/artifacts";
+import { ARTIFACT_DEFINITIONS } from "@/lib/artifacts";
 import { escapeHtml } from "@/lib/htmlEscape";
+import { translations } from "@/contexts/LanguageContext";
+
+type Lang = "en" | "fr";
+
+function makeT(lang: Lang) {
+  return (key: string) => translations[lang][key] || key;
+}
+
+function priorityLabel(lang: Lang, priority: string) {
+  return makeT(lang)(`sidebar.actionChecklist.priority.${priority}`).toUpperCase();
+}
 
 type NotionRichText = { type: "text"; text: { content: string } };
 type NotionBlock = {
@@ -61,14 +72,16 @@ export function contentToNotionBlocks(content: string): NotionBlock[] {
   return blocks;
 }
 
-export function executiveSummaryToNotionBlocks(summary: string): NotionBlock[] {
+export function executiveSummaryToNotionBlocks(summary: string, lang: Lang = "en"): NotionBlock[] {
+  const t = makeT(lang);
   return [
-    block("heading_1", richText("Executive Summary")),
+    block("heading_1", richText(t("securityScore.execSummary"))),
     block("paragraph", richText(summary)),
   ];
 }
 
-export function securityScoreToNotionBlocks(score: SecurityScore): NotionBlock[] {
+export function securityScoreToNotionBlocks(score: SecurityScore, lang: Lang = "en"): NotionBlock[] {
+  const t = makeT(lang);
   const blocks: NotionBlock[] = [];
 
   const mapping = score.complianceMapping;
@@ -76,7 +89,7 @@ export function securityScoreToNotionBlocks(score: SecurityScore): NotionBlock[]
     ? Object.entries(mapping).filter(([, codes]) => codes && codes.length)
     : [];
   if (mappingEntries.length) {
-    blocks.push(block("heading_1", richText("Mapping aux normes")));
+    blocks.push(block("heading_1", richText(t("policyDetail.complianceMapping"))));
     mappingEntries.forEach(([key, codes]) => {
       blocks.push(block("heading_2", richText(COMPLIANCE_STANDARD_LABELS[key] || key)));
       (codes as string[]).forEach((code) => blocks.push(block("bulleted_list_item", richText(code))));
@@ -85,12 +98,12 @@ export function securityScoreToNotionBlocks(score: SecurityScore): NotionBlock[]
 
   if (score.gapAnalysis) {
     const gap = score.gapAnalysis;
-    blocks.push(block("heading_1", richText("Analyse des écarts (Gap Analysis)")));
+    blocks.push(block("heading_1", richText(t("securityScore.gapAnalysis"))));
     blocks.push(
       block(
         "paragraph",
         richText(
-          `Conformité actuelle : ${gap.compliancePercentage}%  ·  Contrôles manquants : ${gap.missingControlsCount}  ·  Risque associé : ${gap.associatedRisk}`
+          `${t("securityScore.currentCompliance")} : ${gap.compliancePercentage}%  ·  ${t("securityScore.missingControls")} : ${gap.missingControlsCount}  ·  ${t("securityScore.associatedRisk")} : ${t(`risk.${gap.associatedRisk.toLowerCase()}`)}`
         )
       )
     );
@@ -98,27 +111,27 @@ export function securityScoreToNotionBlocks(score: SecurityScore): NotionBlock[]
   }
 
   if (score.auditEvidence && score.auditEvidence.length) {
-    blocks.push(block("heading_1", richText("Audit Evidence")));
-    blocks.push(block("paragraph", richText("Registers you should maintain to demonstrate compliance with this policy.")));
+    blocks.push(block("heading_1", richText(t("audit.pageTitle"))));
+    blocks.push(block("paragraph", richText(t("sidebar.auditEvidence.desc"))));
     score.auditEvidence.forEach((evidence) => {
-      const label = ARTIFACT_TITLES_EN[evidence.type] || evidence.type;
+      const label = t(ARTIFACT_DEFINITIONS[evidence.type].titleKey);
       blocks.push(block("bulleted_list_item", richText(`${label} — ${evidence.reason}`)));
     });
   }
 
   if (score.actionItems && score.actionItems.length) {
-    blocks.push(block("heading_1", richText("Prochaines étapes (plan d'action)")));
+    blocks.push(block("heading_1", richText(t("sidebar.actionChecklist.title"))));
     score.actionItems.forEach((item) => {
       const tool = item.tool ? ` → ${item.tool}` : "";
       const time = item.estimatedTime ? ` (${item.estimatedTime})` : "";
-      blocks.push(block("bulleted_list_item", richText(`[${item.priority.toUpperCase()}] ${item.task}${tool}${time}`)));
+      blocks.push(block("bulleted_list_item", richText(`[${priorityLabel(lang, item.priority)}] ${item.task}${tool}${time}`)));
     });
   }
 
   if (score.recommendations && score.recommendations.length) {
-    blocks.push(block("heading_1", richText("Recommandations priorisées")));
+    blocks.push(block("heading_1", richText(t("securityScore.recommendations"))));
     score.recommendations.forEach((rec) => {
-      blocks.push(block("bulleted_list_item", richText(`[${rec.priority.toUpperCase()}] ${rec.text}`)));
+      blocks.push(block("bulleted_list_item", richText(`[${priorityLabel(lang, rec.priority)}] ${rec.text}`)));
     });
   }
 
@@ -177,11 +190,13 @@ export function contentToConfluenceStorage(content: string): string {
   return html.join("\n");
 }
 
-export function executiveSummaryToConfluenceStorage(summary: string): string {
-  return `<h1>Executive Summary</h1>\n<p>${escapeHtml(summary)}</p>`;
+export function executiveSummaryToConfluenceStorage(summary: string, lang: Lang = "en"): string {
+  const t = makeT(lang);
+  return `<h1>${escapeHtml(t("securityScore.execSummary"))}</h1>\n<p>${escapeHtml(summary)}</p>`;
 }
 
-export function securityScoreToConfluenceStorage(score: SecurityScore): string {
+export function securityScoreToConfluenceStorage(score: SecurityScore, lang: Lang = "en"): string {
+  const t = makeT(lang);
   const html: string[] = [];
 
   const mapping = score.complianceMapping;
@@ -189,7 +204,7 @@ export function securityScoreToConfluenceStorage(score: SecurityScore): string {
     ? Object.entries(mapping).filter(([, codes]) => codes && codes.length)
     : [];
   if (mappingEntries.length) {
-    html.push("<h1>Mapping aux normes</h1>");
+    html.push(`<h1>${escapeHtml(t("policyDetail.complianceMapping"))}</h1>`);
     mappingEntries.forEach(([key, codes]) => {
       html.push(`<h2>${escapeHtml(COMPLIANCE_STANDARD_LABELS[key] || key)}</h2>`);
       html.push("<ul>");
@@ -200,9 +215,9 @@ export function securityScoreToConfluenceStorage(score: SecurityScore): string {
 
   if (score.gapAnalysis) {
     const gap = score.gapAnalysis;
-    html.push("<h1>Analyse des écarts (Gap Analysis)</h1>");
+    html.push(`<h1>${escapeHtml(t("securityScore.gapAnalysis"))}</h1>`);
     html.push(
-      `<p><strong>Conformité actuelle :</strong> ${gap.compliancePercentage}% &nbsp; <strong>Contrôles manquants :</strong> ${gap.missingControlsCount} &nbsp; <strong>Risque associé :</strong> ${escapeHtml(gap.associatedRisk)}</p>`
+      `<p><strong>${escapeHtml(t("securityScore.currentCompliance"))} :</strong> ${gap.compliancePercentage}% &nbsp; <strong>${escapeHtml(t("securityScore.missingControls"))} :</strong> ${gap.missingControlsCount} &nbsp; <strong>${escapeHtml(t("securityScore.associatedRisk"))} :</strong> ${escapeHtml(t(`risk.${gap.associatedRisk.toLowerCase()}`))}</p>`
     );
     if (gap.missingControls.length) {
       html.push("<ul>");
@@ -212,32 +227,32 @@ export function securityScoreToConfluenceStorage(score: SecurityScore): string {
   }
 
   if (score.auditEvidence && score.auditEvidence.length) {
-    html.push("<h1>Audit Evidence</h1>");
-    html.push("<p>Registers you should maintain to demonstrate compliance with this policy.</p>");
+    html.push(`<h1>${escapeHtml(t("audit.pageTitle"))}</h1>`);
+    html.push(`<p>${escapeHtml(t("sidebar.auditEvidence.desc"))}</p>`);
     html.push("<ul>");
     score.auditEvidence.forEach((evidence) => {
-      const label = ARTIFACT_TITLES_EN[evidence.type] || evidence.type;
+      const label = t(ARTIFACT_DEFINITIONS[evidence.type].titleKey);
       html.push(`<li><strong>${escapeHtml(label)}</strong> — ${escapeHtml(evidence.reason)}</li>`);
     });
     html.push("</ul>");
   }
 
   if (score.actionItems && score.actionItems.length) {
-    html.push("<h1>Prochaines étapes (plan d'action)</h1>");
+    html.push(`<h1>${escapeHtml(t("sidebar.actionChecklist.title"))}</h1>`);
     html.push("<ul>");
     score.actionItems.forEach((item) => {
       const tool = item.tool ? ` → ${escapeHtml(item.tool)}` : "";
       const time = item.estimatedTime ? ` (${escapeHtml(item.estimatedTime)})` : "";
-      html.push(`<li><strong>[${item.priority.toUpperCase()}]</strong> ${escapeHtml(item.task)}${tool}${time}</li>`);
+      html.push(`<li><strong>[${priorityLabel(lang, item.priority)}]</strong> ${escapeHtml(item.task)}${tool}${time}</li>`);
     });
     html.push("</ul>");
   }
 
   if (score.recommendations && score.recommendations.length) {
-    html.push("<h1>Recommandations priorisées</h1>");
+    html.push(`<h1>${escapeHtml(t("securityScore.recommendations"))}</h1>`);
     html.push("<ul>");
     score.recommendations.forEach((rec) => {
-      html.push(`<li><strong>[${rec.priority.toUpperCase()}]</strong> ${escapeHtml(rec.text)}</li>`);
+      html.push(`<li><strong>[${priorityLabel(lang, rec.priority)}]</strong> ${escapeHtml(rec.text)}</li>`);
     });
     html.push("</ul>");
   }

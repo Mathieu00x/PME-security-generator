@@ -3,8 +3,9 @@ import { useState } from "react";
 import { FileText, Loader2 } from "lucide-react";
 import { Policy, Branding } from "@/types";
 import { COMPLIANCE_STANDARD_LABELS } from "@/lib/complianceLabels";
-import { ARTIFACT_TITLES_EN } from "@/lib/artifacts";
+import { ARTIFACT_DEFINITIONS } from "@/lib/artifacts";
 import { resolveBranding } from "@/lib/branding";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props {
   policy: Policy;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function DownloadWordButton({ policy, companyName = "Your Company", branding }: Props) {
+  const { t, dateLocale } = useLanguage();
   const [loading, setLoading] = useState(false);
   const brand = branding || resolveBranding(null);
   const brandColorHex = brand.color.replace("#", "").toUpperCase();
@@ -120,16 +122,22 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
       type DocChild = InstanceType<typeof Paragraph> | InstanceType<typeof Table>;
       const children: DocChild[] = [];
 
+      const riskKey = (level: string) => `risk.${level.toLowerCase()}` as "risk.low" | "risk.medium" | "risk.high";
+      const priorityKey = (p: string) => `sidebar.actionChecklist.priority.${p}` as
+        | "sidebar.actionChecklist.priority.high"
+        | "sidebar.actionChecklist.priority.medium"
+        | "sidebar.actionChecklist.priority.low";
+
       // Cover metadata table
       const metaRows = [
-        ["Company", companyName],
-        ["Version", policy.version || "1.0"],
-        ["Date", new Date(policy.created_at).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })],
-        ["Status", policy.status.charAt(0).toUpperCase() + policy.status.slice(1)],
-        ["Classification", "Confidential"],
+        [t("policyDetail.company"), companyName],
+        [t("policyDetail.version"), policy.version || "1.0"],
+        [t("artifact.col.date"), new Date(policy.created_at).toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric" })],
+        [t("policiesList.status"), policy.status.charAt(0).toUpperCase() + policy.status.slice(1)],
+        [t("policyDetail.classification"), t("policyDetail.confidential")],
       ];
       if (policy.security_score) {
-        metaRows.push(["Security Score", `${policy.security_score.securityScore}/100 — ${policy.security_score.riskLevel} Risk`]);
+        metaRows.push([t("dashboard.securityScore"), `${policy.security_score.securityScore}/100 — ${t(riskKey(policy.security_score.riskLevel))}`]);
       }
 
       children.push(
@@ -169,7 +177,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
       if (policy.security_score?.executiveSummary) {
         children.push(
           new Paragraph({
-            children: [new TextRun({ text: "EXECUTIVE SUMMARY", bold: true, size: 16, color: "64748B" })],
+            children: [new TextRun({ text: t("securityScore.execSummary").toUpperCase(), bold: true, size: 16, color: "64748B" })],
             spacing: { before: 240, after: 80 },
           }),
           new Paragraph({
@@ -289,7 +297,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
           children.push(new Paragraph({ children: [new PageBreak()] }));
           children.push(new Paragraph({
             heading: HeadingLevel.HEADING_1,
-            children: [new TextRun("Mapping aux normes")],
+            children: [new TextRun(t("policyDetail.complianceMapping"))],
             spacing: { before: 0, after: 200 },
           }));
 
@@ -315,15 +323,15 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
         children.push(new Paragraph({ children: [new PageBreak()] }));
         children.push(new Paragraph({
           heading: HeadingLevel.HEADING_1,
-          children: [new TextRun("Analyse des écarts (Gap Analysis)")],
+          children: [new TextRun(t("securityScore.gapAnalysis"))],
           spacing: { before: 0, after: 200 },
         }));
 
         const statCellW = 3009;
         const gapStats: [string, string][] = [
-          ["Conformité actuelle", `${gap.compliancePercentage}%`],
-          ["Contrôles manquants", `${gap.missingControlsCount}`],
-          ["Risque associé", gap.associatedRisk],
+          [t("securityScore.currentCompliance"), `${gap.compliancePercentage}%`],
+          [t("securityScore.missingControls"), `${gap.missingControlsCount}`],
+          [t("securityScore.associatedRisk"), t(riskKey(gap.associatedRisk))],
         ];
         children.push(
           new Table({
@@ -352,7 +360,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
 
         if (gap.missingControls.length) {
           children.push(new Paragraph({
-            children: [new TextRun({ text: "Contrôles manquants", bold: true, size: 22, color: "B91C1C" })],
+            children: [new TextRun({ text: t("securityScore.missingControls"), bold: true, size: 22, color: "B91C1C" })],
             spacing: { before: 80, after: 80 },
           }));
           gap.missingControls.forEach((mc) => {
@@ -371,17 +379,17 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
         children.push(new Paragraph({ children: [new PageBreak()] }));
         children.push(new Paragraph({
           heading: HeadingLevel.HEADING_1,
-          children: [new TextRun("Audit Evidence")],
+          children: [new TextRun(t("audit.pageTitle"))],
           spacing: { before: 0, after: 80 },
         }));
         children.push(new Paragraph({
-          children: [new TextRun({ text: "Registers you should maintain to demonstrate compliance with this policy.", size: 18, color: "64748B", italics: true })],
+          children: [new TextRun({ text: t("sidebar.auditEvidence.desc"), size: 18, color: "64748B", italics: true })],
           spacing: { after: 160 },
         }));
 
         auditEvidence.forEach((evidence) => {
           children.push(new Paragraph({
-            children: [new TextRun({ text: ARTIFACT_TITLES_EN[evidence.type] || evidence.type, bold: true, size: 20, color: brandColorHex })],
+            children: [new TextRun({ text: t(ARTIFACT_DEFINITIONS[evidence.type].titleKey), bold: true, size: 20, color: brandColorHex })],
             spacing: { before: 120, after: 40 },
           }));
           children.push(new Paragraph({
@@ -397,7 +405,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
         children.push(new Paragraph({ children: [new PageBreak()] }));
         children.push(new Paragraph({
           heading: HeadingLevel.HEADING_1,
-          children: [new TextRun("Recommandations priorisées")],
+          children: [new TextRun(t("securityScore.recommendations"))],
           spacing: { before: 0, after: 200 },
         }));
 
@@ -406,16 +414,11 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
           medium: "D97706",
           low: "2563EB",
         };
-        const RECO_LABELS: Record<string, string> = {
-          high: "HAUTE",
-          medium: "MOYENNE",
-          low: "FAIBLE",
-        };
 
         recommendations.forEach((rec) => {
           children.push(new Paragraph({
             children: [
-              new TextRun({ text: `[${RECO_LABELS[rec.priority] || rec.priority.toUpperCase()}]  `, bold: true, size: 18, color: RECO_COLORS[rec.priority] || "64748B" }),
+              new TextRun({ text: `[${t(priorityKey(rec.priority)).toUpperCase()}]  `, bold: true, size: 18, color: RECO_COLORS[rec.priority] || "64748B" }),
               new TextRun({ text: rec.text, size: 20 }),
             ],
             spacing: { after: 120 },
@@ -429,13 +432,13 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
         children.push(new Paragraph({ children: [new PageBreak()] }));
         children.push(new Paragraph({
           heading: HeadingLevel.HEADING_1,
-          children: [new TextRun("Bonnes pratiques")],
+          children: [new TextRun(t("sidebar.bestPractices.title"))],
           spacing: { before: 0, after: 200 },
         }));
 
         if (bp.dos.length) {
           children.push(new Paragraph({
-            children: [new TextRun({ text: "À faire", bold: true, size: 22, color: "15803D" })],
+            children: [new TextRun({ text: t("policyDetail.doHeading"), bold: true, size: 22, color: "15803D" })],
             spacing: { before: 160, after: 100 },
           }));
           bp.dos.forEach((item) => {
@@ -449,7 +452,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
 
         if (bp.donts.length) {
           children.push(new Paragraph({
-            children: [new TextRun({ text: "À éviter", bold: true, size: 22, color: "B91C1C" })],
+            children: [new TextRun({ text: t("policyDetail.dontHeading"), bold: true, size: 22, color: "B91C1C" })],
             spacing: { before: 200, after: 100 },
           }));
           bp.donts.forEach((item) => {
@@ -468,7 +471,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
         children.push(new Paragraph({ children: [new PageBreak()] }));
         children.push(new Paragraph({
           heading: HeadingLevel.HEADING_1,
-          children: [new TextRun("Actions prioritaires")],
+          children: [new TextRun(t("sidebar.actionChecklist.title"))],
           spacing: { before: 0, after: 200 },
         }));
 
@@ -477,15 +480,10 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
           medium: "D97706",
           low: "2563EB",
         };
-        const PRIORITY_LABELS: Record<string, string> = {
-          high: "HAUTE",
-          medium: "MOYENNE",
-          low: "FAIBLE",
-        };
 
         actions.forEach((item) => {
           const color = PRIORITY_COLORS[item.priority] || "64748B";
-          const label = PRIORITY_LABELS[item.priority] || item.priority.toUpperCase();
+          const label = t(priorityKey(item.priority)).toUpperCase();
           children.push(
             new Paragraph({
               children: [
@@ -555,7 +553,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
                       new TextRun({ text: `${brand.name}  —  `, size: 16, color: "94A3B8" }),
                       new TextRun({ text: policy.title, size: 16, bold: true, color: "64748B" }),
                       new TextRun({ text: "\t", size: 16 }),
-                      new TextRun({ text: "CONFIDENTIEL", size: 16, color: "94A3B8" }),
+                      new TextRun({ text: t("policyDetail.confidential").toUpperCase(), size: 16, color: "94A3B8" }),
                     ],
                     tabStops: [{ type: "right" as const, position: 9026 }],
                     border: { bottom: { style: BorderStyle.SINGLE, size: 3, color: "E2E8F0", space: 1 } },
@@ -593,7 +591,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Word error:", err);
-      alert("Failed to generate Word document. Please try again.");
+      alert(t("policyDetail.wordFailed"));
     } finally {
       setLoading(false);
     }
@@ -606,7 +604,7 @@ export function DownloadWordButton({ policy, companyName = "Your Company", brand
       className="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-white"
     >
       {loading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
-      {loading ? "Generating…" : "Download Word"}
+      {loading ? t("audit.generating") : t("policyDetail.downloadWord")}
     </button>
   );
 }

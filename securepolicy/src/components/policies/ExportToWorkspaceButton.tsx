@@ -17,7 +17,7 @@ export function ExportToWorkspaceButton({
   policyId: string;
   provider: IntegrationProvider;
 }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   async function handleExport() {
@@ -26,7 +26,7 @@ export function ExportToWorkspaceButton({
       const res = await fetch(`/api/integrations/${provider}/export`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ policyId }),
+        body: JSON.stringify({ policyId, lang }),
       });
       const data = await res.json();
 

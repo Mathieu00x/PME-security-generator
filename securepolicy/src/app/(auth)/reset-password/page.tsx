@@ -62,6 +62,8 @@ export default function ResetPasswordPage() {
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
+                suppressHydrationWarning
                 label={t("auth.email")}
                 placeholder="name@company.com"
                 value={email}

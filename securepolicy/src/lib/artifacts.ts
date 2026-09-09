@@ -138,18 +138,6 @@ export const ARTIFACT_DEFINITIONS: Record<ArtifactType, ArtifactDefinition> = {
   },
 };
 
-// English fallback labels for document generators (PDF/Word/export) that render
-// outside the React tree and don't have access to the language context.
-export const ARTIFACT_TITLES_EN: Record<ArtifactType, string> = {
-  backup_register: "Backup Register",
-  asset_inventory: "Asset Inventory",
-  training_register: "Security Training Register",
-  incident_register: "Incident Register",
-  access_register: "Access Register",
-  rights_request_register: "Data Subject Rights Requests Register",
-  third_party_register: "Third-Party / Vendor Register",
-};
-
 export const ARTIFACT_ORDER: ArtifactType[] = [
   "backup_register",
   "asset_inventory",

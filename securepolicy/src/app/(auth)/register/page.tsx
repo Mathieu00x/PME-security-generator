@@ -123,6 +123,8 @@ export default function RegisterPage() {
             <Input
               id="email"
               type="email"
+              autoComplete="email"
+              suppressHydrationWarning
               label={t("auth.email")}
               placeholder="name@company.com"
               value={email}
@@ -138,6 +140,8 @@ export default function RegisterPage() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  suppressHydrationWarning
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -158,6 +162,8 @@ export default function RegisterPage() {
                 <input
                   id="confirm"
                   type={showConfirm ? "text" : "password"}
+                  autoComplete="new-password"
+                  suppressHydrationWarning
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

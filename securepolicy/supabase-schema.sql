@@ -225,18 +225,57 @@ on conflict (id) do nothing;
 
 -- ============================================================
 -- Client portal (public, read-only share links)
--- A policy can be shared via an unguessable token; RLS only exposes rows
--- that are explicitly opted in, and the app additionally filters by the
--- exact token, so an anonymous visitor can never browse/enumerate policies.
+--
+-- RLS audit finding (documented here per the P1 isolation review): the
+-- original policy below — `using (share_enabled = true)` — gated only on
+-- the boolean flag, not on share_token. RLS has no way to compare a row
+-- against "the value the client filtered by"; it only evaluates whether
+-- each row satisfies the USING predicate. So although the Next.js page
+-- additionally filters `.eq("share_token", token)`, that filter is just
+-- applied in application code — anyone holding the public anon key (which
+-- is, by design, embedded in every page's client bundle) could call
+-- Supabase's REST endpoint directly with `?share_enabled=eq.true&select=*`
+-- and skip the token filter entirely, returning every customer's shared
+-- policy (full content + security_score), not just the one a given link
+-- points to. This was a real cross-tenant data exposure, broader than a
+-- same-user-different-row leak: it required no authentication and no
+-- guessing, just the public anon key.
+--
+-- Fix: drop table-level anon SELECT entirely and expose the client portal
+-- only through get_shared_policy(token), a SECURITY DEFINER function that
+-- enforces the exact token match itself before returning a row, so there
+-- is no query shape that can return more than the single matching policy.
 -- ============================================================
 
 alter table public.policies add column if not exists share_enabled boolean not null default false;
 alter table public.policies add column if not exists share_token uuid;
 
 drop policy if exists "Anyone can view shared policies" on public.policies;
-create policy "Anyone can view shared policies"
-  on public.policies for select
-  using (share_enabled = true);
+
+drop function if exists public.get_shared_policy(uuid);
+create function public.get_shared_policy(p_token uuid)
+returns table (
+  id uuid,
+  user_id uuid,
+  title text,
+  content text,
+  version text,
+  updated_at timestamptz,
+  security_score jsonb
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select p.id, p.user_id, p.title, p.content, p.version, p.updated_at, p.security_score
+  from public.policies p
+  where p.share_token = p_token
+    and p.share_enabled = true
+  limit 1;
+$$;
+
+revoke all on function public.get_shared_policy(uuid) from public;
+grant execute on function public.get_shared_policy(uuid) to anon, authenticated;
 
 -- ============================================================
 -- MSP branding (white-label exports for the Agency plan)

@@ -87,7 +87,7 @@ export function DashboardClient({
                 <span className={`text-xs font-medium mt-2 block ${
                   latestScore.securityScore >= 70 ? "text-green-600" : latestScore.securityScore >= 40 ? "text-yellow-600" : "text-red-600"
                 }`}>
-                  {latestScore.riskLevel} Risk
+                  {t(`scan.risk.${latestScore.riskLevel.toLowerCase()}` as "scan.risk.low" | "scan.risk.medium" | "scan.risk.high")}
                 </span>
               )}
               <Link href="/security-score" className="text-xs text-blue-600 hover:underline mt-1 block">
