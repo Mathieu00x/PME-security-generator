@@ -14,7 +14,20 @@ export async function POST(req: NextRequest) {
 
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${expectedToken}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // TEMPORARY diagnostic — reveals only lengths/short prefixes, never the
+    // full secret. Remove before merging.
+    return NextResponse.json(
+      {
+        error: "Unauthorized",
+        debug: {
+          expectedTokenLength: expectedToken.length,
+          expectedPrefix: expectedToken.slice(0, 6),
+          receivedHeaderLength: authHeader?.length ?? 0,
+          receivedHeaderPrefix: authHeader?.slice(0, 13) ?? null,
+        },
+      },
+      { status: 401 }
+    );
   }
 
   const supabase = createAdminClient();
