@@ -12,22 +12,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Admin endpoint not configured" }, { status: 503 });
   }
 
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${expectedToken}`) {
-    // TEMPORARY diagnostic — reveals only lengths/short prefixes, never the
-    // full secret. Remove before merging.
-    return NextResponse.json(
-      {
-        error: "Unauthorized",
-        debug: {
-          expectedTokenLength: expectedToken.length,
-          expectedPrefix: expectedToken.slice(0, 6),
-          receivedHeaderLength: authHeader?.length ?? 0,
-          receivedHeaderPrefix: authHeader?.slice(0, 13) ?? null,
-        },
-      },
-      { status: 401 }
-    );
+  // Deliberately NOT the standard "Authorization" header: Vercel's edge layer
+  // reserves/intercepts "Authorization" for its own OIDC / deployment
+  // protection handling on this project (confirmed empirically — a correctly
+  // configured Bearer token never reached this handler, arriving as an empty
+  // header every time). A custom header name avoids that collision entirely.
+  const token = req.headers.get("x-admin-token");
+  if (token !== expectedToken) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabase = createAdminClient();
