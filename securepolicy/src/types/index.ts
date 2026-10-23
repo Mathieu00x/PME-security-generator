@@ -297,3 +297,130 @@ export interface Subscription {
   created_at: string;
   updated_at: string;
 }
+
+// ============================================================
+// Knowledge Base + remediation tasks (finding-to-action pipeline)
+// ============================================================
+
+export type KBCategory = "email_security" | "tls" | "headers" | "exposure" | "subdomain" | "governance";
+export type KBSeverity = "critical" | "high" | "medium" | "low";
+export type KBPhase = 1 | 2 | 3;
+
+export type FindingKey =
+  | "dmarc_missing"
+  | "spf_missing"
+  | "dkim_not_detected"
+  | "ssl_expired"
+  | "ssl_weak_protocol"
+  | "hsts_missing"
+  | "csp_missing"
+  | "hibp_breach_detected";
+
+export interface KBControl {
+  id: string;
+  code: string;
+  finding_key: string;
+  category: KBCategory;
+  severity: KBSeverity;
+  phase: KBPhase;
+  title_fr: string;
+  title_en: string;
+  why_it_matters_fr: string | null;
+  why_it_matters_en: string | null;
+  business_impact_fr: string | null;
+  business_impact_en: string | null;
+  remediation_steps_fr: string[];
+  remediation_steps_en: string[];
+  evidence_required_fr: string[];
+  evidence_required_en: string[];
+  nist_csf: string[];
+  cis_controls: string[];
+  iso_27001: string[];
+  loi_25: string[];
+  pipeda: string[];
+  soc2: string[];
+  created_at: string;
+}
+
+export interface FrameworkMappings {
+  nist_csf: string[];
+  cis_controls: string[];
+  iso_27001: string[];
+  loi_25: string[];
+  pipeda: string[];
+  soc2: string[];
+}
+
+export type RemediationStatus = "open" | "in_progress" | "completed" | "verified";
+export type RemediationSource = "scan" | "assessment";
+
+export interface RemediationTask {
+  id: string;
+  user_id: string;
+  client_id: string;
+  scan_id: string | null;
+  control_code: string | null;
+  source: RemediationSource;
+  source_question_id: string | null;
+  finding_key: string | null;
+  category: KBCategory;
+  severity: KBSeverity;
+  phase: KBPhase;
+  title_fr: string;
+  title_en: string;
+  why_it_matters_fr: string | null;
+  why_it_matters_en: string | null;
+  business_impact_fr: string | null;
+  business_impact_en: string | null;
+  remediation_steps_fr: string[];
+  remediation_steps_en: string[];
+  evidence_required_fr: string[];
+  evidence_required_en: string[];
+  framework_mappings: FrameworkMappings;
+  owner_name: string | null;
+  owner_email: string | null;
+  due_date: string | null;
+  status: RemediationStatus;
+  evidence_notes: string | null;
+  evidence_url: string | null;
+  ai_context: string | null;
+  completed_at: string | null;
+  verified_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================
+// Compliance assessments (Loi 25 / PIPEDA readiness)
+// ============================================================
+
+export type AnswerValue = "yes" | "partial" | "no" | "na";
+
+export interface AssessmentAnswer {
+  value: AnswerValue;
+  notes?: string;
+  evidence_url?: string;
+}
+
+export interface AssessmentSectionScore {
+  score: number;
+  total: number;
+  pct: number;
+}
+
+export type ComplianceFramework = "loi25" | "pipeda";
+
+export interface ComplianceAssessment {
+  id: string;
+  user_id: string;
+  client_id: string;
+  framework: ComplianceFramework;
+  answers: Record<string, AssessmentAnswer>;
+  scores: Record<string, AssessmentSectionScore> | null;
+  overall_score: number | null;
+  status: "in_progress" | "completed";
+  version: number;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}

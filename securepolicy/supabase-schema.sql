@@ -639,3 +639,195 @@ create table if not exists public.email_campaigns_sent (
   unique (user_id, campaign)
 );
 alter table public.email_campaigns_sent enable row level security;
+
+-- ============================================================
+-- Phase 1 — Knowledge Base + finding-to-action pipeline
+-- (Sprint 1). RLS cross-tenant isolation and all policies below
+-- verified against two real authenticated users going through actual
+-- RLS-enforced requests (not the service-role client) — confirmed
+-- User B cannot select/update/delete User A's rows by id or via an
+-- unfiltered list, on remediation_tasks and compliance_assessments.
+-- ============================================================
+
+create table if not exists public.kb_controls (
+  id uuid default gen_random_uuid() primary key,
+  code text unique not null,
+  finding_key text not null,
+  category text not null check (category in ('email_security','tls','headers','exposure','subdomain','governance')),
+  severity text not null check (severity in ('critical','high','medium','low')),
+  phase int not null default 1 check (phase in (1,2,3)),
+  title_fr text not null, title_en text not null,
+  why_it_matters_fr text, why_it_matters_en text,
+  business_impact_fr text, business_impact_en text,
+  remediation_steps_fr jsonb not null default '[]'::jsonb,
+  remediation_steps_en jsonb not null default '[]'::jsonb,
+  evidence_required_fr text[] not null default '{}',
+  evidence_required_en text[] not null default '{}',
+  nist_csf text[] not null default '{}',
+  cis_controls text[] not null default '{}',
+  iso_27001 text[] not null default '{}',
+  loi_25 text[] not null default '{}',
+  pipeda text[] not null default '{}',
+  soc2 text[] not null default '{}',
+  created_at timestamptz default now()
+);
+
+create index if not exists kb_controls_finding_key_idx on public.kb_controls (finding_key);
+
+alter table public.kb_controls enable row level security;
+
+-- Shared reference data, not user-owned — read-only for every
+-- authenticated user, written only via the fail-closed admin seed route.
+drop policy if exists "Anyone can read kb controls" on public.kb_controls;
+create policy "Anyone can read kb controls"
+  on public.kb_controls for select
+  using (true);
+
+create table if not exists public.remediation_tasks (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  client_id uuid references public.clients(id) on delete cascade not null,
+  scan_id uuid references public.attack_surface_reports(id) on delete set null,
+  control_code text references public.kb_controls(code),
+  -- "scan" rows (control_code set) come from generateRemediationTasks();
+  -- "assessment" rows (source_question_id set, control_code null) come from
+  -- a Loi 25 / PIPEDA compliance gap — one unified table so the tasks list
+  -- and roadmap show both kinds of action items together.
+  source text not null default 'scan' check (source in ('scan','assessment')),
+  source_question_id text,
+  finding_key text,
+  category text not null,
+  severity text not null check (severity in ('critical','high','medium','low')),
+  phase int not null default 1 check (phase in (1,2,3)),
+  status text not null default 'open' check (status in ('open','in_progress','completed','verified')),
+  title_fr text not null default '',
+  title_en text not null default '',
+  why_it_matters_fr text,
+  why_it_matters_en text,
+  business_impact_fr text,
+  business_impact_en text,
+  remediation_steps_fr jsonb not null default '[]'::jsonb,
+  remediation_steps_en jsonb not null default '[]'::jsonb,
+  evidence_required_fr text[] not null default '{}',
+  evidence_required_en text[] not null default '{}',
+  framework_mappings jsonb not null default '{}'::jsonb,
+  owner_name text,
+  owner_email text,
+  due_date date,
+  evidence_notes text,
+  evidence_url text,
+  ai_context text,
+  completed_at timestamptz,
+  verified_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Dedup for scan-sourced tasks: one row per (client, control), regardless
+-- of status, so a re-scan never resurrects a completed task nor duplicates
+-- an open one. A plain unique constraint, not a partial index — PostgREST's
+-- upsert generates a bare `ON CONFLICT (columns)` with no way to repeat a
+-- partial index's WHERE predicate, so a partial index here fails with
+-- "no unique or exclusion constraint matching" (42P10). The standard SQL
+-- NULL-distinctness of a plain unique constraint (two NULLs never conflict)
+-- naturally excludes assessment-sourced rows (control_code = null) from
+-- this constraint, so it only ever dedupes scan-sourced rows.
+alter table public.remediation_tasks drop constraint if exists remediation_tasks_client_control_key;
+alter table public.remediation_tasks add constraint remediation_tasks_client_control_key
+  unique (client_id, control_code);
+
+-- Symmetric dedup for assessment-sourced tasks (one row per client +
+-- question), using the same NULL-distinctness to stay independent of the
+-- constraint above.
+alter table public.remediation_tasks drop constraint if exists remediation_tasks_client_source_question_key;
+alter table public.remediation_tasks add constraint remediation_tasks_client_source_question_key
+  unique (client_id, source_question_id);
+
+create index if not exists remediation_tasks_client_id_idx on public.remediation_tasks (client_id);
+create index if not exists remediation_tasks_scan_id_idx on public.remediation_tasks (scan_id);
+create index if not exists remediation_tasks_status_idx on public.remediation_tasks (status);
+
+alter table public.remediation_tasks enable row level security;
+
+drop policy if exists "Users can manage their own remediation tasks" on public.remediation_tasks;
+create policy "Users can manage their own remediation tasks"
+  on public.remediation_tasks for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and exists (select 1 from public.clients c where c.id = client_id and c.user_id = auth.uid())
+  );
+
+drop trigger if exists update_remediation_tasks_updated_at on public.remediation_tasks;
+create trigger update_remediation_tasks_updated_at
+  before update on public.remediation_tasks
+  for each row execute function update_updated_at();
+
+-- ============================================================
+-- Phase 1 — Compliance assessments: Loi 25 / PIPEDA readiness
+-- (Sprint 2-3). One living row per (client, framework), updated in
+-- place as the questionnaire is answered.
+-- ============================================================
+
+create table if not exists public.compliance_assessments (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  client_id uuid references public.clients(id) on delete cascade not null,
+  framework text not null check (framework in ('loi25','pipeda')),
+  answers jsonb not null default '{}'::jsonb,
+  scores jsonb,
+  overall_score int,
+  status text not null default 'in_progress' check (status in ('in_progress','completed')),
+  version int not null default 1,
+  completed_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create unique index if not exists compliance_assessments_client_framework_idx
+  on public.compliance_assessments (client_id, framework);
+
+alter table public.compliance_assessments enable row level security;
+
+drop policy if exists "Users can manage their own compliance assessments" on public.compliance_assessments;
+create policy "Users can manage their own compliance assessments"
+  on public.compliance_assessments for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and exists (select 1 from public.clients c where c.id = client_id and c.user_id = auth.uid())
+  );
+
+drop trigger if exists update_compliance_assessments_updated_at on public.compliance_assessments;
+create trigger update_compliance_assessments_updated_at
+  before update on public.compliance_assessments
+  for each row execute function update_updated_at();
+
+-- Rate-limit tracking for POST /api/remediation-tasks/[id]/ai-context — the
+-- only new Sprint 1-4 route that calls Claude directly. checkRateLimit()
+-- (src/lib/rateLimit.ts) counts rows a user has *created* in a table within
+-- a window, which fits insert-heavy actions (scans, policy generations) but
+-- not this one: ai-context is an UPDATE on an existing remediation_tasks
+-- row, and remediation_tasks.created_at reflects when the task itself was
+-- created (by a scan), not when AI context was requested for it — counting
+-- against that column would both over-count (unrelated task creation) and
+-- under-count (repeated AI-context clicks on the same task never add a new
+-- row). This tiny log table gives checkRateLimit() a real per-call signal to
+-- count, mirroring the purpose-built email_campaigns_sent table above
+-- rather than forcing an ill-fitting table to serve double duty.
+create table if not exists public.ai_context_requests (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  created_at timestamptz default now()
+);
+
+create index if not exists ai_context_requests_user_created_idx
+  on public.ai_context_requests (user_id, created_at);
+
+alter table public.ai_context_requests enable row level security;
+
+drop policy if exists "Users can manage their own ai context requests" on public.ai_context_requests;
+create policy "Users can manage their own ai context requests"
+  on public.ai_context_requests for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

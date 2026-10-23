@@ -36,9 +36,30 @@ export default async function DashboardLayout({
     getActiveClientId(supabase, user.id),
   ]);
 
+  const [{ count: openTaskCount }, { data: complianceScores }] = await Promise.all([
+    activeClientId
+      ? supabase
+          .from("remediation_tasks")
+          .select("id", { count: "exact", head: true })
+          .eq("client_id", activeClientId)
+          .in("status", ["open", "in_progress"])
+      : Promise.resolve({ count: 0 }),
+    activeClientId
+      ? supabase.from("compliance_assessments").select("framework, overall_score").eq("client_id", activeClientId)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const loi25Score = complianceScores?.find((a) => a.framework === "loi25")?.overall_score ?? null;
+  const pipedaScore = complianceScores?.find((a) => a.framework === "pipeda")?.overall_score ?? null;
+
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar
+        activeClientId={activeClientId}
+        openTaskCount={openTaskCount ?? 0}
+        loi25Score={loi25Score}
+        pipedaScore={pipedaScore}
+      />
       <div className="flex-1 flex flex-col overflow-auto">
         <div className="flex items-center justify-between px-8 py-3 border-b border-gray-100 bg-white">
           <ClientSwitcher clients={(clients as Client[]) || []} activeClientId={activeClientId} />
