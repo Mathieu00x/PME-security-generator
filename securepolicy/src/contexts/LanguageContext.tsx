@@ -30,7 +30,7 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     // Hero
     "hero.badge": "ALL-IN-ONE CYBERSECURITY PLATFORM",
-    "hero.tagline": "Scan. Secure. Comply.",
+    "hero.tagline": "Assess. Remediate. Prove.",
     "hero.title1": "The cybersecurity platform",
     "hero.title2": "for Canadian",
     "hero.title3": "MSPs & IT consultants",
@@ -1033,7 +1033,7 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     // Hero
     "hero.badge": "PLATEFORME CYBERSÉCURITÉ TOUT-EN-UN",
-    "hero.tagline": "Scan. Secure. Comply.",
+    "hero.tagline": "Évaluez. Corrigez. Démontrez.",
     "hero.title1": "La plateforme de cybersécurité",
     "hero.title2": "pour les",
     "hero.title3": "MSP et consultants IT canadiens",
