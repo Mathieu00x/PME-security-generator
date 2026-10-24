@@ -7,9 +7,9 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.securepilot.ca"),
-  title: "SecurePilot — Scan. Secure. Comply. | Plateforme cybersécurité pour consultants IT",
+  title: "SecurePilot — Assess. Remediate. Prove. | Plateforme cybersécurité pour MSP canadiens",
   description:
-    "Scannez la surface d'attaque de vos clients, générez leurs politiques de conformité et exportez des rapports professionnels — en 20 minutes par client. / Scan your clients' attack surface, generate compliance policies, and export professional reports — in 20 minutes per client.",
+    "Évaluez la posture de sécurité externe de vos clients, mesurez leur préparation Loi 25 et PIPEDA, et livrez des rapports prêts pour le client — depuis un seul espace de travail. / Assess your clients' external security posture, evaluate Loi 25 & PIPEDA readiness, and deliver client-ready reports — from one workspace.",
 };
 
 export default function RootLayout({
