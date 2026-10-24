@@ -831,3 +831,57 @@ create policy "Users can manage their own ai context requests"
   on public.ai_context_requests for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Legal traceability for Loi 25 / PIPEDA questions: "why am I being asked
+-- this?" + an official source, shown next to each assessment question.
+-- review_status defaults to "pending_review" because kb_references/help
+-- text was authored by this codebase, not reviewed by a qualified privacy
+-- professional — nothing here should be presented as legally authoritative
+-- until reviewed_by/last_reviewed_at are set. Reference data shared across
+-- tenants, same read-everyone treatment as kb_controls.
+create table if not exists public.compliance_requirement (
+  id uuid default gen_random_uuid() primary key,
+  framework text not null check (framework in ('loi25','pipeda')),
+  framework_version text,
+  requirement_key text unique not null,
+  title_fr text not null,
+  title_en text not null,
+  description_fr text,
+  description_en text,
+  source_reference text,
+  source_url text,
+  effective_date date,
+  review_status text not null default 'pending_review' check (review_status in ('pending_review','reviewed')),
+  last_reviewed_at timestamptz,
+  reviewed_by text,
+  weight int,
+  created_at timestamptz default now()
+);
+
+create index if not exists compliance_requirement_framework_idx on public.compliance_requirement (framework);
+
+alter table public.compliance_requirement enable row level security;
+
+drop policy if exists "Anyone can read compliance requirements" on public.compliance_requirement;
+create policy "Anyone can read compliance requirements"
+  on public.compliance_requirement for select
+  using (true);
+
+-- Atomic merge for assessment autosave. The PATCH route used to read
+-- compliance_assessments.answers in JS, spread the new answers on top, then
+-- write the merge back — a classic lost-update race when two autosaves
+-- overlap (both read the same snapshot, whichever writes last silently
+-- discards the other's answer). Doing the merge as a single UPDATE
+-- statement serializes on Postgres' row lock instead, so no answer is ever
+-- lost. security invoker (the default) means the UPDATE still goes through
+-- this table's own RLS policy as the calling user — isolation is unchanged.
+create or replace function public.merge_assessment_answers(
+  p_id uuid, p_user_id uuid, p_new_answers jsonb
+) returns public.compliance_assessments
+language sql
+as $$
+  update public.compliance_assessments
+  set answers = answers || p_new_answers, updated_at = now()
+  where id = p_id and user_id = p_user_id
+  returning *;
+$$;

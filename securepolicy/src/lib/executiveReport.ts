@@ -14,13 +14,13 @@ function buildComplianceSection(
 ): string {
   const lines: string[] = [];
   if (loi25) {
-    lines.push(`Loi 25 : ${loi25.overall_score ?? 0}% (${loi25.status === "completed" ? "évaluation complétée" : "en cours"})`);
+    lines.push(`Indice de préparation — Loi 25 : ${loi25.overall_score ?? 0}% (${loi25.status === "completed" ? "évaluation complétée" : "en cours"})`);
   }
   if (pipeda) {
-    lines.push(`PIPEDA : ${pipeda.overall_score ?? 0}% (${pipeda.status === "completed" ? "évaluation complétée" : "en cours"})`);
+    lines.push(`Indice de préparation — PIPEDA : ${pipeda.overall_score ?? 0}% (${pipeda.status === "completed" ? "évaluation complétée" : "en cours"})`);
   }
   if (lines.length === 0) {
-    return "Aucune évaluation de conformité (Loi 25 / PIPEDA) n'a encore été réalisée pour ce client. Recommander de la compléter.";
+    return "Aucune évaluation de préparation (Loi 25 / PIPEDA) n'a encore été réalisée pour ce client. Recommander de la compléter.";
   }
   return lines.join("\n");
 }
@@ -68,7 +68,7 @@ ${breakdown ? scoreLine("En-têtes HTTP", breakdown.headers) : "En-têtes : non 
 - Findings critiques : ${criticalFindings.join(", ") || "Aucun"}
 - Findings élevés : ${otherFindings.join(", ") || "Aucun"}
 
-Conformité :
+Indice de préparation réglementaire (PAS un score de conformité ni une certification — mesure le niveau de préparation selon les contrôles évalués par SecurePilot) :
 ${complianceSection}
 
 Génère un rapport exécutif EN FRANÇAIS avec cette structure exacte :
@@ -94,12 +94,12 @@ Génère un rapport exécutif EN FRANÇAIS avec cette structure exacte :
 [30-60 jours : consolidation]
 [60-90 jours : maturité]
 
-## Note sur la conformité
+## Indice de préparation réglementaire
 
-[Résumé de l'état de conformité à partir des données fournies ci-dessus, ou recommandation de compléter l'évaluation si aucune n'existe.]
+[Résumé du niveau de préparation à partir des données fournies ci-dessus, ou recommandation de compléter l'évaluation si aucune n'existe. Toujours appeler ça un "indice de préparation", jamais un "score de conformité" ou un pourcentage de conformité.]
 
 ---
-*Ce rapport est basé sur une évaluation externe passive des contrôles de sécurité observables. Il ne constitue pas un test d'intrusion ni une certification de conformité. Consultez un professionnel pour validation.*
+*Ce rapport est basé sur une évaluation externe passive des contrôles de sécurité observables et sur l'auto-évaluation déclarée dans SecurePilot. Il ne constitue pas un test d'intrusion, un audit de conformité, ni un avis juridique. Consultez un professionnel qualifié pour toute validation réglementaire.*
 
 Ton ton doit être professionnel, direct et orienté business. Évite le jargon technique. Le dirigeant comprend les risques business mais pas les protocoles réseau. Ne jamais inventer de statistique ou de détail qui ne figure pas dans les données fournies.
 

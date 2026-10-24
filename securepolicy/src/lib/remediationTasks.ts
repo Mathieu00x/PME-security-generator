@@ -42,6 +42,13 @@ export async function generateRemediationTasks(
   }
 ): Promise<void> {
   const triggeredKeys = getTriggeredFindingKeys(params.ssl, params.hibp, params.dns, params.securityHeaders);
+
+  // Run reconciliation against the full triggered set (possibly empty, on a
+  // clean scan) regardless of whether there's anything new to insert below —
+  // a clean scan is exactly the case where every previously "completed" task
+  // should flip to "verified".
+  await verifyResolvedScanTasks(supabase, params.clientId, triggeredKeys);
+
   if (triggeredKeys.length === 0) return;
 
   const { data: kbRows, error } = await supabase.from("kb_controls").select("*").in("finding_key", triggeredKeys);
@@ -101,5 +108,45 @@ export async function generateRemediationTasks(
 
   if (insertError) {
     console.error("generateRemediationTasks: insert failed", insertError);
+  }
+}
+
+// A technician marking a task "completed" is a claim, not proof. The only
+// thing that upgrades it to "verified" is SecurePilot itself re-checking: if
+// a scan-sourced task is "completed" and this fresh scan no longer triggers
+// its finding_key, that's real evidence the fix held. Deliberately one-way —
+// a regression (finding reappears later) does not auto-reopen a verified
+// task; see the "re-open on regression" note in generateRemediationTasks'
+// dedup rule above, same tradeoff, documented rather than silently assumed.
+async function verifyResolvedScanTasks(
+  supabase: SupabaseClient,
+  clientId: string,
+  triggeredKeys: FindingKey[]
+): Promise<void> {
+  const { data: completedTasks, error } = await supabase
+    .from("remediation_tasks")
+    .select("id, finding_key")
+    .eq("client_id", clientId)
+    .eq("source", "scan")
+    .eq("status", "completed")
+    .not("finding_key", "is", null);
+
+  if (error) {
+    console.error("verifyResolvedScanTasks: lookup failed", error);
+    return;
+  }
+
+  const resolvedIds = (completedTasks ?? [])
+    .filter((t) => !triggeredKeys.includes(t.finding_key as FindingKey))
+    .map((t) => t.id);
+  if (resolvedIds.length === 0) return;
+
+  const { error: updateError } = await supabase
+    .from("remediation_tasks")
+    .update({ status: "verified", verified_at: new Date().toISOString() })
+    .in("id", resolvedIds);
+
+  if (updateError) {
+    console.error("verifyResolvedScanTasks: update failed", updateError);
   }
 }

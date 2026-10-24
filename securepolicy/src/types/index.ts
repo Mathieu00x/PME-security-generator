@@ -424,3 +424,28 @@ export interface ComplianceAssessment {
   created_at: string;
   updated_at: string;
 }
+
+// Reference data for "why am I being asked this?" + official source, shown
+// next to each Loi 25 / PIPEDA question. requirement_key matches the
+// `${framework}:${question.id}` format already used for remediation_tasks'
+// source_question_id. review_status defaults to "pending_review" — nothing
+// here should be presented as legally authoritative until a qualified privacy
+// professional has signed off (reviewed_by / last_reviewed_at set).
+export interface ComplianceRequirement {
+  id: string;
+  framework: ComplianceFramework;
+  framework_version: string | null;
+  requirement_key: string;
+  title_fr: string;
+  title_en: string;
+  description_fr: string | null;
+  description_en: string | null;
+  source_reference: string | null;
+  source_url: string | null;
+  effective_date: string | null;
+  review_status: "pending_review" | "reviewed";
+  last_reviewed_at: string | null;
+  reviewed_by: string | null;
+  weight: number | null;
+  created_at: string;
+}

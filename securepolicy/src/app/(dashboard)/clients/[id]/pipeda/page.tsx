@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Client, ComplianceAssessment } from "@/types";
+import { Client, ComplianceAssessment, ComplianceRequirement } from "@/types";
 import { pipedaQuestions } from "@/lib/assessments/pipeda-questions";
 import { AssessmentClient } from "@/components/assessments/AssessmentClient";
 
@@ -32,11 +32,20 @@ export default async function PipedaPage({ params }: { params: { id: string } })
     assessment = created;
   }
 
+  const { data: requirementRows } = await supabase
+    .from("compliance_requirement")
+    .select("*")
+    .eq("framework", "pipeda");
+  const requirements = Object.fromEntries(
+    ((requirementRows as ComplianceRequirement[]) ?? []).map((r) => [r.requirement_key, r])
+  );
+
   return (
     <AssessmentClient
       client={client as Client}
       assessment={assessment as ComplianceAssessment}
       questions={pipedaQuestions}
+      requirements={requirements}
     />
   );
 }

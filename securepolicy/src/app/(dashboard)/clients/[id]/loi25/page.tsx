@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Client, ComplianceAssessment } from "@/types";
+import { Client, ComplianceAssessment, ComplianceRequirement } from "@/types";
 import { loi25Questions } from "@/lib/assessments/loi25-questions";
 import { AssessmentClient } from "@/components/assessments/AssessmentClient";
 
@@ -32,11 +32,20 @@ export default async function Loi25Page({ params }: { params: { id: string } }) 
     assessment = created;
   }
 
+  const { data: requirementRows } = await supabase
+    .from("compliance_requirement")
+    .select("*")
+    .eq("framework", "loi25");
+  const requirements = Object.fromEntries(
+    ((requirementRows as ComplianceRequirement[]) ?? []).map((r) => [r.requirement_key, r])
+  );
+
   return (
     <AssessmentClient
       client={client as Client}
       assessment={assessment as ComplianceAssessment}
       questions={loi25Questions}
+      requirements={requirements}
     />
   );
 }

@@ -41,6 +41,7 @@ export function RoadmapClient({
   }
 
   const openTasks = tasks.filter((t) => t.status !== "completed" && t.status !== "verified");
+  const pendingVerificationCount = tasks.filter((t) => t.status === "completed").length;
   const phases: (1 | 2 | 3)[] = [1, 2, 3];
   const currentScore = latestScan.risk_score;
   const breakdown = latestScan.score_breakdown ?? { ssl: 0, dnsEmail: 0, dataExposure: null, headers: null };
@@ -50,6 +51,12 @@ export function RoadmapClient({
     score: projectScoreThroughPhase(breakdown, openTasks, phase),
     items: tasks.filter((t) => t.phase === phase),
   }));
+  // The "potential" headline is the phase-3 projection: every category touched
+  // by a remaining open/in_progress task reaches its ceiling. It is a ceiling
+  // assuming full completion AND verification — never a guaranteed outcome —
+  // which is exactly why it's labeled separately from currentScore (the real,
+  // last-scanned number) rather than blended into one trajectory.
+  const potentialScore = projections[2]?.score ?? currentScore;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -57,7 +64,32 @@ export function RoadmapClient({
         <Map size={18} className="text-blue-600" />
         <h1 className="text-xl font-bold text-gray-900">{t("roadmap.title")}</h1>
       </div>
-      <p className="text-sm text-gray-500 mb-6">{t("roadmap.scoreToday", { score: currentScore })}</p>
+
+      <Card className="mb-6">
+        <div className="flex items-center gap-6 mb-3">
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">{t("roadmap.currentScore")}</p>
+            <p className="text-2xl font-bold text-gray-900">{currentScore}<span className="text-sm text-gray-400">/100</span></p>
+          </div>
+          <div className="text-gray-300">→</div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">{t("roadmap.potentialScore")}</p>
+            <p className="text-2xl font-bold text-blue-600">{potentialScore}<span className="text-sm text-gray-400">/100</span></p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-400 flex-wrap mb-2">
+          {["open", "completed", "verificationRequired", "rescan", "verified"].map((step, i, arr) => (
+            <span key={step} className="flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded-full bg-gray-100">{t(`roadmap.pipeline.${step}`)}</span>
+              {i < arr.length - 1 && <span>→</span>}
+            </span>
+          ))}
+        </div>
+        <p className="text-xs text-gray-400 italic">{t("roadmap.verificationDisclaimer")}</p>
+        {pendingVerificationCount > 0 && (
+          <p className="text-xs text-amber-600 mt-1.5">{t("roadmap.pendingVerificationCount", { count: pendingVerificationCount })}</p>
+        )}
+      </Card>
 
       <div className="flex flex-col gap-6">
         {projections.map(({ phase, score, items }) => {

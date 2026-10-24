@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { HelpCircle, Sparkles } from "lucide-react";
+import { HelpCircle, ExternalLink, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { AssessmentQuestionnaire } from "@/lib/assessments/loi25-questions";
 import { calculateComplianceScore } from "@/lib/assessments/scoring";
-import { AnswerValue, AssessmentAnswer, Client, ComplianceAssessment } from "@/types";
+import { AnswerValue, AssessmentAnswer, Client, ComplianceAssessment, ComplianceRequirement } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import toast from "react-hot-toast";
 
@@ -17,15 +17,22 @@ export function AssessmentClient({
   client,
   assessment: initialAssessment,
   questions,
+  requirements,
 }: {
   client: Client;
   assessment: ComplianceAssessment;
   questions: AssessmentQuestionnaire;
+  // Keyed by requirement_key ("${framework}:${questionId}"). Empty object
+  // until the compliance_requirement table is seeded — the "why/source" panel
+  // degrades gracefully to just the existing help text when a question has
+  // no matching row yet.
+  requirements: Record<string, ComplianceRequirement>;
 }) {
   const { t, lang } = useLanguage();
   const [answers, setAnswers] = useState<Record<string, AssessmentAnswer>>(initialAssessment.answers ?? {});
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [generatingActions, setGeneratingActions] = useState(false);
+  const [expandedWhy, setExpandedWhy] = useState<Record<string, boolean>>({});
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced autosave — no precedent for this in the codebase (every other
@@ -105,7 +112,8 @@ export function AssessmentClient({
             style={{ width: `${overall}%` }}
           />
         </div>
-        <p className="text-xs text-gray-400 mb-4">{overallLabel}</p>
+        <p className="text-xs text-gray-400 mb-1">{overallLabel}</p>
+        <p className="text-xs text-gray-400 mb-4 italic">{t("assessment.readinessDisclaimer")}</p>
 
         <div className="flex flex-col gap-2.5">
           {questions.sections.map((section) => {
@@ -136,14 +144,47 @@ export function AssessmentClient({
               {section.questions.map((q) => {
                 const answer = answers[q.id];
                 const options = q.type === "yes_no_partial_na" ? ANSWER_OPTIONS : ANSWER_OPTIONS.filter((o) => o !== "na");
+                const requirement = requirements[`${questions.framework}:${q.id}`];
+                const isExpanded = !!expandedWhy[q.id];
                 return (
                   <div key={q.id} className="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0">
                     <div className="flex items-start gap-1.5 mb-2.5">
                       <p className="text-sm font-medium text-gray-800">{lang === "fr" ? q.text_fr : q.text_en}</p>
-                      <span title={lang === "fr" ? q.help_fr : q.help_en} className="flex-shrink-0 mt-0.5 cursor-help">
-                        <HelpCircle size={13} className="text-gray-300" />
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedWhy((prev) => ({ ...prev, [q.id]: !prev[q.id] }))}
+                        className="flex-shrink-0 mt-0.5 text-gray-300 hover:text-blue-500"
+                        aria-label={t("assessment.whyThisQuestion")}
+                      >
+                        <HelpCircle size={13} />
+                      </button>
                     </div>
+                    {isExpanded && (
+                      <div className="mb-3 p-3 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-600 flex flex-col gap-1.5">
+                        <p className="font-medium text-gray-700">{t("assessment.whyThisQuestion")}</p>
+                        <p>{lang === "fr" ? q.help_fr : q.help_en}</p>
+                        {requirement && (
+                          <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-gray-200 mt-1">
+                            {requirement.source_reference && <span>{requirement.source_reference}</span>}
+                            {requirement.source_url && (
+                              <a
+                                href={requirement.source_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+                              >
+                                {t("assessment.officialSource")} <ExternalLink size={10} />
+                              </a>
+                            )}
+                            {requirement.review_status === "pending_review" && (
+                              <span className="px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-medium">
+                                {t("assessment.pendingLegalReview")}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="flex gap-2 flex-wrap mb-2">
                       {options.map((opt) => (
                         <label

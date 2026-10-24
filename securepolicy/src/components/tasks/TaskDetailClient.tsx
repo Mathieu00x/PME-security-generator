@@ -11,7 +11,11 @@ import { Client, RemediationStatus, RemediationTask } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import toast from "react-hot-toast";
 
-const STATUS_OPTIONS: RemediationStatus[] = ["open", "in_progress", "completed", "verified"];
+// "verified" is deliberately not selectable here — see the PATCH route, which
+// rejects it from this form entirely. It's set only by SecurePilot itself
+// (a clean rescan for scan-sourced tasks, a re-answered question for
+// assessment-sourced ones), never self-reported by whoever is editing this form.
+const STATUS_OPTIONS: Exclude<RemediationStatus, "verified">[] = ["open", "in_progress", "completed"];
 
 export function TaskDetailClient({ client, task: initialTask }: { client: Client; task: RemediationTask }) {
   const { t, lang } = useLanguage();
@@ -38,7 +42,10 @@ export function TaskDetailClient({ client, task: initialTask }: { client: Client
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status,
+          // Omitted entirely when already "verified" — that status is
+          // system-set and isn't in STATUS_OPTIONS, so sending it back
+          // unchanged would otherwise be rejected by the PATCH route's check.
+          ...(task.status !== "verified" && { status }),
           owner_name: ownerName || null,
           owner_email: ownerEmail || null,
           due_date: dueDate || null,
@@ -180,13 +187,27 @@ export function TaskDetailClient({ client, task: initialTask }: { client: Client
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
           />
-          <Select
-            label={t("tasks.detail.status")}
-            value={status}
-            onChange={(e) => setStatus(e.target.value as RemediationStatus)}
-            options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`tasks.status.${s === "in_progress" ? "inProgress" : s}`) }))}
-          />
+          {task.status === "verified" ? (
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">{t("tasks.detail.status")}</label>
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-green-200 bg-green-50 text-green-700 font-medium w-fit">
+                {t("tasks.status.verified")}
+              </span>
+            </div>
+          ) : (
+            <Select
+              label={t("tasks.detail.status")}
+              value={status}
+              onChange={(e) => setStatus(e.target.value as RemediationStatus)}
+              options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`tasks.status.${s === "in_progress" ? "inProgress" : s}`) }))}
+            />
+          )}
         </div>
+        {task.status === "verified" ? (
+          <p className="text-xs text-gray-400 mb-4">{t("tasks.detail.verifiedExplanation")}</p>
+        ) : status === "completed" ? (
+          <p className="text-xs text-gray-400 mb-4">{t("tasks.detail.pendingVerificationExplanation")}</p>
+        ) : null}
         <div className="flex flex-col gap-3 mb-4">
           <Input
             label={t("tasks.detail.evidenceUrl")}
