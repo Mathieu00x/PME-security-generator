@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Client, RemediationTask, RemediationStatus, KBSeverity } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getTaskCategoryKey } from "@/lib/taskLabels";
 
 const SEVERITY_STYLE: Record<KBSeverity, string> = {
   critical: "bg-red-100 text-red-700",
@@ -114,7 +115,7 @@ export function TasksClient({
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {lang === "fr" ? task.title_fr : task.title_en}
                           </p>
-                          <p className="text-xs text-gray-400 mt-0.5">{task.category}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{t(getTaskCategoryKey(task) as "tasks.category.tls")}</p>
                         </div>
                         <span className="text-xs text-blue-600 whitespace-nowrap flex-shrink-0">
                           {t("tasks.card.viewDetails")}
