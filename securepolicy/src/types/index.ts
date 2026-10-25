@@ -3,6 +3,7 @@ import { HIBPResult } from "@/lib/scanners/hibp";
 import { SubdomainsResult } from "@/lib/scanners/subdomains";
 import { DNSResult } from "@/lib/scanners/dns";
 import { SecurityHeadersResult } from "@/lib/scanners/headers";
+import { FingerprintResult } from "@/lib/scanners/fingerprint";
 
 export type PolicyType =
   | "password"
@@ -250,6 +251,7 @@ export interface AttackSurfaceReport {
   findings: ScanFinding[];
   recommended_policies: PolicyType[];
   executive_summary?: string;
+  fingerprint?: FingerprintResult;
 }
 
 export interface Framework {

@@ -345,6 +345,11 @@ alter table public.attack_surface_reports add column if not exists security_head
 alter table public.attack_surface_reports add column if not exists score_breakdown jsonb not null default '{}'::jsonb;
 alter table public.attack_surface_reports add column if not exists executive_summary text;
 
+-- fingerprint: passive technology observations (CMS, web server, language
+-- runtime, JS framework) from the homepage response — never affects
+-- risk_score, purely informational asset-discovery data.
+alter table public.attack_surface_reports add column if not exists fingerprint jsonb not null default '{}'::jsonb;
+
 alter table public.attack_surface_reports enable row level security;
 
 drop policy if exists "Users can manage their own attack surface reports" on public.attack_surface_reports;

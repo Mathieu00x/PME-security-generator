@@ -6,6 +6,7 @@ import { checkHIBP, HIBPResult } from "@/lib/scanners/hibp";
 import { checkSubdomains, SubdomainsResult } from "@/lib/scanners/subdomains";
 import { checkDNS, DNSResult } from "@/lib/scanners/dns";
 import { checkSecurityHeaders, SecurityHeadersResult } from "@/lib/scanners/headers";
+import { checkFingerprint } from "@/lib/scanners/fingerprint";
 import { PolicyType, ScanFinding } from "@/types";
 import { getActiveClientId } from "@/lib/activeClient";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -171,12 +172,13 @@ export async function POST(req: NextRequest) {
 
     // Run every scanner in parallel; each is self-contained and never throws
     // (they catch internally), so one failing check can't block the others.
-    const [ssl, hibp, subdomains, dns, securityHeaders] = await Promise.all([
+    const [ssl, hibp, subdomains, dns, securityHeaders, fingerprint] = await Promise.all([
       checkSSL(domain),
       checkHIBP(domain),
       checkSubdomains(domain),
       checkDNS(domain),
       checkSecurityHeaders(domain),
+      checkFingerprint(domain),
     ]);
 
     const scoreBreakdown = computeScoreBreakdown(ssl, hibp, dns, securityHeaders);
@@ -201,6 +203,7 @@ export async function POST(req: NextRequest) {
         findings,
         recommended_policies: recommendedPolicies,
         executive_summary: executiveSummary,
+        fingerprint,
       })
       .select()
       .single();

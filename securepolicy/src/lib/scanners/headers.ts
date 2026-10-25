@@ -24,7 +24,13 @@ const ALL_MISSING: Omit<SecurityHeadersResult, "error"> = {
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
-function requestOnce(hostname: string, ip: string): Promise<{ status: number; headers: Record<string, string | string[] | undefined> }> {
+// Caps how much of the body we buffer — this exists to fingerprint the
+// homepage (meta generator tags, CMS path references, etc. live near the
+// top of the document), not to mirror the full page, so a hard cap keeps a
+// multi-megabyte page from costing real time/memory on every scan.
+const MAX_BODY_BYTES = 300_000;
+
+function requestOnce(hostname: string, ip: string): Promise<{ status: number; headers: Record<string, string | string[] | undefined>; body: string }> {
   return new Promise((resolve, reject) => {
     const req = https.request(
       {
@@ -38,8 +44,16 @@ function requestOnce(hostname: string, ip: string): Promise<{ status: number; he
         timeout: 8000,
       },
       (res) => {
-        resolve({ status: res.statusCode ?? 0, headers: res.headers });
-        res.resume(); // discard body, we only need headers
+        const chunks: Buffer[] = [];
+        let total = 0;
+        res.on("data", (chunk: Buffer) => {
+          if (total >= MAX_BODY_BYTES) return;
+          total += chunk.length;
+          chunks.push(chunk);
+        });
+        res.on("end", () => {
+          resolve({ status: res.statusCode ?? 0, headers: res.headers, body: Buffer.concat(chunks).toString("utf-8") });
+        });
       }
     );
     req.on("timeout", () => req.destroy(new Error("timeout")));
@@ -49,18 +63,21 @@ function requestOnce(hostname: string, ip: string): Promise<{ status: number; he
 }
 
 /**
- * Fetches response headers for `domain`, resolving and validating the IP
- * ourselves before every connection (including redirect hops) instead of
- * trusting fetch's built-in redirect: "follow" — which would happily
- * connect to whatever a redirect Location points at, including a private
- * or internal address (see ssrfGuard.ts).
+ * Fetches response headers (and, for fingerprinting, the homepage body) for
+ * `domain`, resolving and validating the IP ourselves before every
+ * connection (including redirect hops) instead of trusting fetch's built-in
+ * redirect: "follow" — which would happily connect to whatever a redirect
+ * Location points at, including a private or internal address (see
+ * ssrfGuard.ts). Shared by checkSecurityHeaders() and the fingerprint
+ * scanner so the client's homepage is only fetched once per scan, not once
+ * per feature that happens to read the same response.
  */
-async function fetchHeadersSafely(domain: string, maxRedirects = 5) {
+export async function fetchSafely(domain: string, maxRedirects = 5) {
   let target = domain;
 
   for (let i = 0; i <= maxRedirects; i++) {
     const { ip } = await resolveSafeIp(target);
-    const { status, headers } = await requestOnce(target, ip);
+    const { status, headers, body } = await requestOnce(target, ip);
 
     if (REDIRECT_STATUSES.has(status) && headers.location && i < maxRedirects) {
       const next = new URL(headers.location as string, `https://${target}`);
@@ -69,7 +86,7 @@ async function fetchHeadersSafely(domain: string, maxRedirects = 5) {
       continue;
     }
 
-    return headers;
+    return { headers, body };
   }
 
   throw new Error("Too many redirects");
@@ -77,7 +94,7 @@ async function fetchHeadersSafely(domain: string, maxRedirects = 5) {
 
 export async function checkSecurityHeaders(domain: string): Promise<SecurityHeadersResult> {
   try {
-    const h = await fetchHeadersSafely(domain);
+    const { headers: h } = await fetchSafely(domain);
 
     const get = (name: string) => {
       const v = h[name];

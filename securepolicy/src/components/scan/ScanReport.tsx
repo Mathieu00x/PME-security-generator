@@ -220,6 +220,37 @@ export function ScanReport({ report, isFirstScan }: { report: AttackSurfaceRepor
         )}
       </Card>
 
+      {/* Fingerprint — technologies observed on the homepage response.
+          Older stored scans (jsonb, no schema) predate this field. */}
+      {report.fingerprint?.technologies && report.fingerprint.technologies.length > 0 && (
+        <Card padding="sm" className="mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Layers size={15} className="text-blue-500" />
+            <h3 className="text-sm font-semibold text-gray-900">{t("scan.report.technologies")}</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {report.fingerprint.technologies.map((tech) => (
+              <div key={tech.technology} className="flex items-start justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 text-xs">
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {tech.technology}
+                    {tech.version && <span className="text-gray-400 font-normal"> {tech.version}</span>}
+                  </p>
+                  <p className="text-gray-400 mt-0.5">{tech.evidence}</p>
+                </div>
+                <span
+                  className={`flex-shrink-0 text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full ${
+                    tech.confidence === "high" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                  }`}
+                >
+                  {t(`scan.report.confidence.${tech.confidence}`)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* Findings */}
       <Card className="mb-4">
         <h2 className="font-semibold text-gray-900 mb-4">{t("scan.report.findings")}</h2>
