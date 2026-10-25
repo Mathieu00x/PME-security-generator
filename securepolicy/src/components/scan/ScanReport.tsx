@@ -184,6 +184,12 @@ export function ScanReport({ report, isFirstScan }: { report: AttackSurfaceRepor
               count: report.subdomains.count,
             })}
           </p>
+          {/* Older stored scans (jsonb, no schema) predate this field */}
+          {(report.subdomains.danglingCnames?.length ?? 0) > 0 && (
+            <p className="text-xs text-red-600 font-medium mt-1.5">
+              {t("scan.report.danglingCnames", { count: report.subdomains.danglingCnames.length })}
+            </p>
+          )}
         </Card>
       </div>
 

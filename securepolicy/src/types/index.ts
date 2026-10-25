@@ -314,7 +314,8 @@ export type FindingKey =
   | "ssl_weak_protocol"
   | "hsts_missing"
   | "csp_missing"
-  | "hibp_breach_detected";
+  | "hibp_breach_detected"
+  | "subdomain_takeover_risk";
 
 export interface KBControl {
   id: string;

@@ -297,4 +297,42 @@ export const KB_SEED_DATA: Omit<KBControl, "id" | "created_at">[] = [
     pipeda: ["Principle 7 - Safeguards", "Principle 1 - Accountability"],
     soc2: ["CC6.1", "CC7.2"],
   },
+  {
+    code: "SP-SUB-001",
+    finding_key: "subdomain_takeover_risk",
+    title_fr: "Sous-domaine vulnérable à une prise de contrôle",
+    title_en: "Subdomain vulnerable to takeover",
+    category: "subdomain",
+    severity: "high",
+    phase: 1,
+    why_it_matters_fr:
+      "Un enregistrement CNAME pointe encore vers un fournisseur externe (hébergement statique, PaaS, etc.) dont la ressource associée n'existe plus. Tant que cet enregistrement n'est pas retiré, n'importe qui peut réclamer ce nom chez le fournisseur et servir son propre contenu sous le sous-domaine de l'entreprise.",
+
+    why_it_matters_en:
+      "A CNAME record still points at an external provider (static hosting, PaaS, etc.) whose underlying resource no longer exists. Until that record is removed, anyone can claim that name on the provider's side and serve their own content under the company's subdomain.",
+    business_impact_fr:
+      "Un attaquant qui réclame la ressource peut héberger du contenu malveillant, des pages de phishing ou des cookies volés sous un sous-domaine légitime de l'entreprise — contournant la confiance accordée au domaine principal.",
+    business_impact_en:
+      "An attacker who claims the resource can host malicious content, phishing pages, or steal cookies under a legitimate company subdomain — bypassing the trust placed in the primary domain.",
+    remediation_steps_fr: [
+      "Confirmer si le sous-domaine et la ressource externe (bucket, app, site) sont encore utilisés",
+      "Si non utilisés : supprimer l'enregistrement CNAME chez le fournisseur DNS",
+      "Si toujours utilisés : recréer la ressource chez le fournisseur externe sous le même nom",
+      "Revérifier par un nouveau scan que le CNAME ne pointe plus vers une ressource non réclamée",
+    ],
+    remediation_steps_en: [
+      "Confirm whether the subdomain and the external resource (bucket, app, site) are still in use",
+      "If unused: remove the CNAME record at the DNS provider",
+      "If still in use: recreate the resource under the same name at the external provider",
+      "Re-verify with a new scan that the CNAME no longer points at an unclaimed resource",
+    ],
+    evidence_required_fr: ["Capture d'écran du DNS après retrait ou recréation de la ressource", "Confirmation du fournisseur externe"],
+    evidence_required_en: ["Screenshot of DNS after removal or resource recreation", "Confirmation from the external provider"],
+    nist_csf: ["ID.RA-1", "PR.DS-8"],
+    cis_controls: ["12.2", "7.1"],
+    iso_27001: ["A.8.9", "A.8.20"],
+    loi_25: ["Art. 3.5 - Mesures de sécurité"],
+    pipeda: ["Principle 7 - Safeguards"],
+    soc2: ["CC6.1"],
+  },
 ];

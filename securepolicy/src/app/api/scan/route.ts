@@ -81,6 +81,14 @@ function buildFindings(ssl: SSLResult, hibp: HIBPResult, subdomains: SubdomainsR
     message: `${subdomains.count} sous-domaine(s) exposé(s) détecté(s)`,
   });
 
+  if (subdomains.danglingCnames.length > 0) {
+    findings.push({
+      severity: "high",
+      category: "Sous-domaines",
+      message: `${subdomains.danglingCnames.length} sous-domaine(s) vulnérable(s) à une prise de contrôle (CNAME pendant)`,
+    });
+  }
+
   if (!headers.error) {
     if (!headers.hasHSTS) {
       findings.push({ severity: "medium", category: "En-têtes de sécurité", message: "HSTS non activé (risque de rétrogradation HTTP)" });
@@ -211,6 +219,7 @@ export async function POST(req: NextRequest) {
         hibp,
         dns,
         securityHeaders,
+        subdomains,
       });
     } catch (err) {
       console.error("Remediation task generation failed:", err);

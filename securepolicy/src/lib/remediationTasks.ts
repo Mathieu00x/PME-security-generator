@@ -3,6 +3,7 @@ import { SSLResult } from "@/lib/scanners/ssl";
 import { HIBPResult } from "@/lib/scanners/hibp";
 import { DNSResult } from "@/lib/scanners/dns";
 import { SecurityHeadersResult } from "@/lib/scanners/headers";
+import { SubdomainsResult } from "@/lib/scanners/subdomains";
 import { FindingKey } from "@/types";
 
 // Derived directly from the raw scanner results, mirroring getRecommendedPolicies()/
@@ -11,7 +12,8 @@ export function getTriggeredFindingKeys(
   ssl: SSLResult,
   hibp: HIBPResult,
   dns: DNSResult,
-  headers: SecurityHeadersResult
+  headers: SecurityHeadersResult,
+  subdomains: SubdomainsResult
 ): FindingKey[] {
   const keys: FindingKey[] = [];
   if (!dns.hasDMARC) keys.push("dmarc_missing");
@@ -26,6 +28,11 @@ export function getTriggeredFindingKeys(
   // hibp.error must never be treated as "clean" — only a confirmed, successful
   // check with compromisedCount > 0 triggers, mirroring dataExposureCategoryScore().
   if (!hibp.error && hibp.compromisedCount > 0) keys.push("hibp_breach_detected");
+  // One task regardless of how many dangling CNAMEs were found, same
+  // one-task-per-control granularity as every other finding here — which
+  // subdomain(s) are affected isn't snapshotted into the task today, same
+  // limitation as e.g. ssl_expired not embedding "expires in 12 days".
+  if (subdomains.danglingCnames.length > 0) keys.push("subdomain_takeover_risk");
   return keys;
 }
 
@@ -39,9 +46,16 @@ export async function generateRemediationTasks(
     hibp: HIBPResult;
     dns: DNSResult;
     securityHeaders: SecurityHeadersResult;
+    subdomains: SubdomainsResult;
   }
 ): Promise<void> {
-  const triggeredKeys = getTriggeredFindingKeys(params.ssl, params.hibp, params.dns, params.securityHeaders);
+  const triggeredKeys = getTriggeredFindingKeys(
+    params.ssl,
+    params.hibp,
+    params.dns,
+    params.securityHeaders,
+    params.subdomains
+  );
 
   // Run reconciliation against the full triggered set (possibly empty, on a
   // clean scan) regardless of whether there's anything new to insert below —
