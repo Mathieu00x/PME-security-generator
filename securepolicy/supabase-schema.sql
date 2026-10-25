@@ -890,3 +890,77 @@ as $$
   where id = p_id and user_id = p_user_id
   returning *;
 $$;
+-- Minimal asset inventory — deliberately not a full CMDB. type starts at
+-- just domain/subdomain; add ip/service/application/cloud_resource only
+-- once SecurePilot actually produces that kind of observation. Lets the
+-- scanner accumulate history (first/last seen) instead of every scan being
+-- a disconnected snapshot, and keeps "observation" (a fact: Next.js
+-- detected) architecturally separate from "finding" (a potential problem) —
+-- load-bearing for when CVE correlation is built later, so "technology
+-- detected" never collapses directly into "vulnerability found".
+-- ============================================================
+-- Bloc 1 — table assets
+-- ============================================================
+create table if not exists public.assets (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  client_id uuid references public.clients(id) on delete cascade not null,
+  type text not null check (type in ('domain','subdomain')),
+  hostname text not null,
+  first_seen_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  status text not null default 'active' check (status in ('active','stale')),
+  created_at timestamptz default now()
+);
+
+-- Plain unique constraint (not a partial index) so upsert's ON CONFLICT
+-- works — same lesson as remediation_tasks/kb_controls earlier.
+alter table public.assets drop constraint if exists assets_client_hostname_key;
+alter table public.assets add constraint assets_client_hostname_key unique (client_id, hostname);
+
+create index if not exists assets_client_id_idx on public.assets (client_id);
+
+-- ============================================================
+-- Bloc 2 — RLS assets (même pattern que remediation_tasks :
+-- vérifie aussi que client_id appartient bien à l'utilisateur)
+-- ============================================================
+alter table public.assets enable row level security;
+
+drop policy if exists "Users can manage their own assets" on public.assets;
+create policy "Users can manage their own assets"
+  on public.assets for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and exists (select 1 from public.clients c where c.id = client_id and c.user_id = auth.uid())
+  );
+
+-- ============================================================
+-- Bloc 3 — table asset_observations
+-- ============================================================
+create table if not exists public.asset_observations (
+  id uuid default gen_random_uuid() primary key,
+  asset_id uuid references public.assets(id) on delete cascade not null,
+  report_id uuid references public.attack_surface_reports(id) on delete set null,
+  observation_type text not null,
+  value text not null,
+  confidence text not null check (confidence in ('high','medium')),
+  evidence text,
+  observed_at timestamptz not null default now()
+);
+
+create index if not exists asset_observations_asset_id_idx on public.asset_observations (asset_id);
+create index if not exists asset_observations_report_id_idx on public.asset_observations (report_id);
+
+-- ============================================================
+-- Bloc 4 — RLS asset_observations (pas de user_id propre,
+-- vérifié via une jointure sur assets — reste volontairement
+-- minimal plutôt que de dénormaliser user_id partout)
+-- ============================================================
+alter table public.asset_observations enable row level security;
+
+drop policy if exists "Users can manage their own asset observations" on public.asset_observations;
+create policy "Users can manage their own asset observations"
+  on public.asset_observations for all
+  using (exists (select 1 from public.assets a where a.id = asset_id and a.user_id = auth.uid()))
+  with check (exists (select 1 from public.assets a where a.id = asset_id and a.user_id = auth.uid()));

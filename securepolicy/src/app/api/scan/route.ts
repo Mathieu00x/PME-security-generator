@@ -11,6 +11,7 @@ import { PolicyType, ScanFinding } from "@/types";
 import { getActiveClientId } from "@/lib/activeClient";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { generateRemediationTasks } from "@/lib/remediationTasks";
+import { recordAssetObservations } from "@/lib/assetInventory";
 import { computeScoreBreakdown, calculateRiskScore } from "@/lib/scoring";
 
 const DOMAIN_RE = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/;
@@ -228,6 +229,19 @@ export async function POST(req: NextRequest) {
       console.error("Remediation task generation failed:", err);
       // Never blocks or alters the scan response — same resilience contract
       // as generateExecutiveSummary() above.
+    }
+
+    try {
+      await recordAssetObservations(supabase, {
+        userId: user.id,
+        clientId,
+        reportId: report.id,
+        domain,
+        subdomains,
+        fingerprint,
+      });
+    } catch (err) {
+      console.error("Asset observation recording failed:", err);
     }
 
     return NextResponse.json({ reportId: report.id, riskScore, scoreBreakdown, findings, recommendedPolicies, executiveSummary });

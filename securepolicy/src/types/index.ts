@@ -452,3 +452,46 @@ export interface ComplianceRequirement {
   weight: number | null;
   created_at: string;
 }
+
+// ============================================================
+// Asset inventory — minimal on purpose (type is just "domain" |
+// "subdomain" for now; add ip/service/application/cloud_resource only
+// once SecurePilot actually produces that kind of observation, not ahead
+// of it). Lets the scanner start accumulating history (first/last seen,
+// status) instead of every scan being a disconnected snapshot.
+// ============================================================
+
+export type AssetType = "domain" | "subdomain";
+export type AssetStatus = "active" | "stale";
+
+export interface Asset {
+  id: string;
+  user_id: string;
+  client_id: string;
+  type: AssetType;
+  hostname: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  status: AssetStatus;
+  created_at: string;
+}
+
+// Deliberately separate from ScanFinding: an observation ("Next.js
+// detected") is a fact, not a problem — it becomes a finding only if
+// something downstream decides it's worth flagging (e.g. a dangling CNAME
+// observation feeding the subdomain_takeover_risk finding). Collapsing the
+// two was explicitly called out as the mistake to avoid before CVE
+// correlation exists, where "technology detected" must never collapse
+// directly into "vulnerability found".
+export type AssetObservationConfidence = "high" | "medium";
+
+export interface AssetObservation {
+  id: string;
+  asset_id: string;
+  report_id: string | null;
+  observation_type: string;
+  value: string;
+  confidence: AssetObservationConfidence;
+  evidence: string | null;
+  observed_at: string;
+}
