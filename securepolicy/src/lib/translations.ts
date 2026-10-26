@@ -260,6 +260,12 @@ export const translations: Record<Lang, Record<string, string>> = {
     "forMspsPage.capabilities.policies": "Security policies & evidence",
     "forMspsPage.finalCta.title": "Manage every client from one workspace",
     "forMspsPage.finalCta.subtitle": "Free during the beta. Unlimited clients. Direct access to the founder.",
+    "loi25ChecklistPage.badge": "Free guide · Loi 25",
+    "loi25ChecklistPage.h1": "Loi 25 Readiness Checklist for Quebec MSPs",
+    "loi25ChecklistPage.subtitle": "13 concrete items across governance, incident management, retention, PIA, individual rights, and consent — the same questions SecurePilot's own assessment asks.",
+    "loi25ChecklistPage.disclaimer": "This checklist is for general guidance only. It does not constitute legal advice — consult a qualified privacy professional for validation.",
+    "loi25ChecklistPage.ctaLead": "Want to evaluate a real client?",
+    "loi25ChecklistPage.ctaButton": "Start a Loi 25 Readiness Assessment",
 
     // Dashboard nav
     "dash.nav.section.overview": "Overview",
@@ -1387,6 +1393,12 @@ export const translations: Record<Lang, Record<string, string>> = {
     "forMspsPage.capabilities.policies": "Politiques de sécurité et preuves",
     "forMspsPage.finalCta.title": "Gérez chaque client depuis un seul espace de travail",
     "forMspsPage.finalCta.subtitle": "Gratuit pendant la bêta. Clients illimités. Accès direct au fondateur.",
+    "loi25ChecklistPage.badge": "Guide gratuit · Loi 25",
+    "loi25ChecklistPage.h1": "Liste de vérification Loi 25 pour les MSP québécois",
+    "loi25ChecklistPage.subtitle": "13 points concrets couvrant la gouvernance, les incidents, la conservation, l'ÉFVP, les droits des personnes et le consentement — les mêmes questions que l'évaluation SecurePilot.",
+    "loi25ChecklistPage.disclaimer": "Cette liste de vérification est fournie à titre informatif seulement. Elle ne constitue pas un avis juridique — consultez un professionnel qualifié en protection des renseignements personnels pour validation.",
+    "loi25ChecklistPage.ctaLead": "Vous voulez évaluer un vrai client ?",
+    "loi25ChecklistPage.ctaButton": "Démarrer une évaluation Loi 25",
 
     // Dashboard nav
     "dash.nav.section.overview": "Aperçu",
