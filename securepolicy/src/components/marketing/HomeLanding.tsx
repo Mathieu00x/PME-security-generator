@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Shield, CheckCircle, Check, Radar, AlertCircle, AlertTriangle,
-  Target, Map, FileBarChart, Building2, Scale, ShieldCheck, ArrowRight,
+  Target, Map, FileBarChart, Building2, Scale, ShieldCheck, ArrowRight, Award,
 } from "lucide-react";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
@@ -107,6 +107,7 @@ export function HomeLanding({ lang }: { lang: Lang }) {
             </span>
           </div>
         </div>
+        <p className="text-xs text-gray-400 max-w-sm mx-auto mt-3">{t("hero.preview.sourceNote")}</p>
       </section>
 
       {/* Standards */}
@@ -118,6 +119,31 @@ export function HomeLanding({ lang }: { lang: Lang }) {
           <div className="flex items-center justify-center gap-12 flex-wrap text-sm font-semibold text-gray-400">
             {["NIST CSF", "CIS Controls", "ISO 27001", "SOC 2", "Loi 25 (Québec)", "PIPEDA"].map((name) => (
               <span key={name}>{name}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Turn a scan into a contract — the MSP's #1 use case for an
+          external scan is prospecting, not just servicing existing
+          clients, so this gets its own prominent section. */}
+      <section className="py-20 px-8">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">{t("prospecting.title")}</h2>
+          <p className="text-gray-500 max-w-xl mx-auto mb-12">{t("prospecting.subtitle")}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {([
+              { icon: Radar, key: "step1" },
+              { icon: FileBarChart, key: "step2" },
+              { icon: Award, key: "step3" },
+            ] as const).map(({ icon: Icon, key }) => (
+              <div key={key} className="bg-gray-50 rounded-2xl p-6">
+                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Icon size={22} className="text-blue-600" />
+                </div>
+                <p className="font-semibold text-gray-900 mb-1">{t(`prospecting.${key}.title`)}</p>
+                <p className="text-sm text-gray-500">{t(`prospecting.${key}.desc`)}</p>
+              </div>
             ))}
           </div>
         </div>

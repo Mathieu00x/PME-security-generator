@@ -1,10 +1,16 @@
+import Link from "next/link";
 import { getT, Lang } from "@/lib/i18n";
 
 export function MarketingFooter({ lang }: { lang: Lang }) {
   const t = getT(lang);
   return (
     <footer className="border-t border-gray-100 py-8 px-8 text-center text-sm text-gray-400">
-      <p>{t("footer.copy")}</p>
+      <p className="mb-3">{t("footer.copy")}</p>
+      <div className="flex items-center justify-center gap-4 text-xs">
+        <Link href="/privacy" className="hover:text-gray-600">{t("footer.privacy")}</Link>
+        <span className="text-gray-200">|</span>
+        <Link href="/terms" className="hover:text-gray-600">{t("footer.terms")}</Link>
+      </div>
     </footer>
   );
 }
