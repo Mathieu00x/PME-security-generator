@@ -28,7 +28,15 @@ export function dataExposureCategoryScore(hibp: HIBPResult): number | null {
   return 25;
 }
 
-export function dnsEmailCategoryScore(dns: DNSResult): number {
+// Same fix as dataExposureCategoryScore/headersCategoryScore: a failed DNS
+// lookup (dns.error set — e.g. the upstream DNS-over-HTTPS resolver was
+// unreachable) used to silently score as if SPF/DMARC/MX were all
+// confirmed absent, which is the opposite failure mode but just as wrong —
+// it understated posture instead of overstating it. Caught by an actual
+// scan hitting a transient resolver failure and coming back with a
+// near-zero score for a domain with correctly configured DNS.
+export function dnsEmailCategoryScore(dns: DNSResult): number | null {
+  if (dns.error) return null;
   let score = 25;
   if (!dns.hasSPF) score -= 8;
   if (!dns.hasDMARC) score -= 8;

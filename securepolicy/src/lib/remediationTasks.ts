@@ -16,8 +16,12 @@ export function getTriggeredFindingKeys(
   subdomains: SubdomainsResult
 ): FindingKey[] {
   const keys: FindingKey[] = [];
-  if (!dns.hasDMARC) keys.push("dmarc_missing");
-  if (!dns.hasSPF) keys.push("spf_missing");
+  // dns.error (the lookup itself failed) must never be read as a confirmed
+  // absence — same guard already applied to hibp/headers below, missing
+  // here until a real scan hit a transient resolver failure and generated
+  // false dmarc_missing/spf_missing tasks for a domain with both configured.
+  if (!dns.error && !dns.hasDMARC) keys.push("dmarc_missing");
+  if (!dns.error && !dns.hasSPF) keys.push("spf_missing");
   // "unknown" (DNS lookups themselves failed) is not evidence of absence —
   // only "not_found" (lookups succeeded, no match under common selectors) triggers.
   if (dns.dkimStatus === "not_found") keys.push("dkim_not_detected");

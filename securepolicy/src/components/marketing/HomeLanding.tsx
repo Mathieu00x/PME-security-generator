@@ -1,10 +1,11 @@
 import Link from "next/link";
 import {
-  Shield, CheckCircle, Check, Radar, AlertCircle, AlertTriangle,
-  Target, Map, FileBarChart, Building2, Scale, ShieldCheck, ArrowRight, Award,
+  Shield, CheckCircle, Check, Radar, AlertTriangle,
+  Target, Map, FileBarChart, Building2, Scale, ShieldCheck, Award,
 } from "lucide-react";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
+import { PublicScanForm } from "@/components/marketing/PublicScanForm";
 import { getT, Lang } from "@/lib/i18n";
 
 const PORTFOLIO_PREVIEW = [
@@ -68,46 +69,8 @@ export function HomeLanding({ lang }: { lang: Lang }) {
           <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-green-500" /> {t("hero.badge3")}</span>
         </div>
 
-        {/* Preview card — client assessment snapshot */}
-        <div className="max-w-sm mx-auto bg-white rounded-2xl border border-gray-100 shadow-xl p-6 text-left">
-          <div className="flex items-center gap-2 mb-4">
-            <Radar size={15} className="text-blue-600" />
-            <span className="text-sm font-semibold text-gray-900">{t("hero.preview.domain")}</span>
-          </div>
-
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-gray-400">{t("hero.preview.score")}</span>
-              <span className="text-xs font-bold text-gray-900">68 / 100</span>
-            </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full rounded-full bg-orange-400" style={{ width: "68%" }} />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 pt-3 border-t border-gray-100 mb-3">
-            <div className="flex items-center gap-2 text-xs">
-              <AlertCircle size={13} className="text-red-500 flex-shrink-0" />
-              <span className="text-gray-700">{t("hero.preview.finding1")}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <AlertTriangle size={13} className="text-orange-400 flex-shrink-0" />
-              <span className="text-gray-700">{t("hero.preview.finding2")}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <CheckCircle size={13} className="text-green-500 flex-shrink-0" />
-              <span className="text-gray-700">{t("hero.preview.finding3")}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-            <span className="text-xs text-gray-500 font-medium">{t("hero.preview.tasksLine")}</span>
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
-              {t("hero.preview.viewPlan")} <ArrowRight size={12} />
-            </span>
-          </div>
-        </div>
-        <p className="text-xs text-gray-400 max-w-sm mx-auto mt-3">{t("hero.preview.sourceNote")}</p>
+        {/* Real, functional scan — not a static mockup. Try it on a prospect's domain. */}
+        <PublicScanForm lang={lang} />
       </section>
 
       {/* Standards */}
@@ -275,6 +238,22 @@ export function HomeLanding({ lang }: { lang: Lang }) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Founder — a security product with no face behind it is itself a
+          credibility gap. Kept honest and minimal: no fabricated bio or
+          photo beyond what's actually been provided. */}
+      <section className="py-16 px-8">
+        <div className="max-w-md mx-auto flex items-center gap-4 bg-gray-50 rounded-2xl p-6 border border-gray-100">
+          <div className="w-14 h-14 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-lg flex-shrink-0">
+            MJ
+          </div>
+          <div>
+            <p className="font-semibold text-gray-900">{t("founder.name")}</p>
+            <p className="text-xs text-gray-500">{t("founder.role")}</p>
+            <p className="text-xs text-gray-500 mt-1">{t("founder.note")}</p>
           </div>
         </div>
       </section>

@@ -30,7 +30,11 @@ export function projectScoreThroughPhase(baseline: ScoreBreakdown, tasks: Remedi
 
   const projected: ScoreBreakdown = {
     ssl: touched.ssl ? 25 : baseline.ssl,
-    dnsEmail: touched.dnsEmail ? 25 : baseline.dnsEmail,
+    // Same null-guard as dataExposure/headers below: dnsEmail only just
+    // became nullable (a failed DNS lookup is now excluded rather than
+    // scored as "all missing") — forcing it to 25 when it was never
+    // evaluated would be the same false-ceiling bug being fixed elsewhere.
+    dnsEmail: touched.dnsEmail && baseline.dnsEmail !== null ? 25 : baseline.dnsEmail,
     dataExposure: touched.dataExposure && baseline.dataExposure !== null ? 25 : baseline.dataExposure,
     headers: touched.headers && baseline.headers !== null ? 25 : baseline.headers,
   };

@@ -62,16 +62,24 @@ function buildFindings(ssl: SSLResult, hibp: HIBPResult, subdomains: SubdomainsR
     findings.push({ severity: "low", category: "Fuites de données", message: "Aucun email compromis détecté" });
   }
 
-  if (!dns.hasSPF) {
-    findings.push({ severity: "medium", category: "DNS", message: "Aucun enregistrement SPF configuré (risque de spoofing)" });
-  }
-  if (!dns.hasDMARC) {
-    findings.push({ severity: "medium", category: "DNS", message: "Aucun enregistrement DMARC configuré" });
-  }
-  if (dns.dkimStatus === "not_found") {
-    findings.push({ severity: "medium", category: "DNS", message: "Aucune signature DKIM détectée (sélecteurs courants)" });
-  } else if (dns.dkimStatus === "unknown") {
-    findings.push({ severity: "low", category: "DNS", message: "Vérification DKIM impossible (échec de résolution DNS)" });
+  // dns.error (the DNS-over-HTTPS lookup itself failed) must never be read
+  // as "confirmed absent" — same bug class already fixed for hibp/headers,
+  // found here via a real scan hitting a transient resolver failure and
+  // reporting SPF/DMARC as missing on a domain that has both configured.
+  if (dns.error) {
+    findings.push({ severity: "low", category: "DNS", message: "Vérification DNS impossible (échec de résolution)" });
+  } else {
+    if (!dns.hasSPF) {
+      findings.push({ severity: "medium", category: "DNS", message: "Aucun enregistrement SPF configuré (risque de spoofing)" });
+    }
+    if (!dns.hasDMARC) {
+      findings.push({ severity: "medium", category: "DNS", message: "Aucun enregistrement DMARC configuré" });
+    }
+    if (dns.dkimStatus === "not_found") {
+      findings.push({ severity: "medium", category: "DNS", message: "Aucune signature DKIM détectée (sélecteurs courants)" });
+    } else if (dns.dkimStatus === "unknown") {
+      findings.push({ severity: "low", category: "DNS", message: "Vérification DKIM impossible (échec de résolution DNS)" });
+    }
   }
   if (dns.hasSPF && dns.hasDMARC && dns.dkimStatus === "found") {
     findings.push({ severity: "low", category: "DNS", message: "SPF, DKIM et DMARC correctement configurés" });

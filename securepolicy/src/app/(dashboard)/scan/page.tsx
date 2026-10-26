@@ -4,7 +4,11 @@ import { ScanForm } from "@/components/scan/ScanForm";
 import { ScanReport } from "@/components/scan/ScanReport";
 import { getActiveClientId } from "@/lib/activeClient";
 
-export default async function ScanPage() {
+export default async function ScanPage({
+  searchParams,
+}: {
+  searchParams: { domain?: string; autorun?: string };
+}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const clientId = await getActiveClientId(supabase, user!.id);
@@ -25,7 +29,7 @@ export default async function ScanPage() {
   ]);
 
   if (!report) {
-    return <ScanForm />;
+    return <ScanForm initialDomain={searchParams.domain} autoSubmit={searchParams.autorun === "1"} />;
   }
 
   return <ScanReport report={report as AttackSurfaceReport} isFirstScan={scanCount === 1} />;

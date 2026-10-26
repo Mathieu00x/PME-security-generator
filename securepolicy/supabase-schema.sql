@@ -964,3 +964,23 @@ create policy "Users can manage their own asset observations"
   on public.asset_observations for all
   using (exists (select 1 from public.assets a where a.id = asset_id and a.user_id = auth.uid()))
   with check (exists (select 1 from public.assets a where a.id = asset_id and a.user_id = auth.uid()));
+
+-- Anonymous homepage scan teaser (no account required). Deliberately
+-- minimal and isolated from every other table: no RLS policies (the
+-- public-scan API route uses the service-role admin client, since there's
+-- no authenticated user to scope a policy to), 24h retention enforced in
+-- application code (publicScanProtection.ts purges on every request rather
+-- than via a separate cron — low-stakes, self-contained table, not worth a
+-- dedicated scheduled job).
+create table if not exists public.public_scan_requests (
+  id uuid default gen_random_uuid() primary key,
+  ip_hmac text not null,
+  domain text not null,
+  result_summary jsonb,
+  created_at timestamptz default now()
+);
+
+create index if not exists public_scan_requests_ip_created_idx on public.public_scan_requests (ip_hmac, created_at);
+create index if not exists public_scan_requests_domain_created_idx on public.public_scan_requests (domain, created_at);
+
+alter table public.public_scan_requests enable row level security;

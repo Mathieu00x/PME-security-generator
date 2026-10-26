@@ -1,7 +1,9 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { track } from "@vercel/analytics";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -10,7 +12,30 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import toast from "react-hot-toast";
 
 export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const { t } = useLanguage();
+  const searchParams = useSearchParams();
+
+  // Carried from the public homepage scan (PublicScanForm -> /register?domain=X)
+  // through Supabase's email-confirmation gap: the user leaves this tab to
+  // click a link in their inbox, so the value has to survive as a cookie
+  // (readable server-side at /auth/callback once their session actually
+  // exists) rather than component state, which the navigation away/back
+  // would lose. 1h is generous for checking an inbox but still bounded.
+  useEffect(() => {
+    const domain = searchParams.get("domain");
+    if (domain) {
+      document.cookie = `pending_scan_domain=${encodeURIComponent(domain)}; path=/; max-age=3600; SameSite=Lax`;
+    }
+  }, [searchParams]);
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -50,6 +75,11 @@ export default function RegisterPage() {
       return;
     }
 
+    // Funnel measurement requested alongside the public-scan feature: scans
+    // -> "view full report" clicks (tracked in PublicScanForm) -> signups.
+    // fromPublicScan distinguishes signups that started from the homepage
+    // scan teaser from every other signup path.
+    track("signup_completed", { fromPublicScan: !!searchParams.get("domain") });
     setSuccess(true);
     setLoading(false);
   }

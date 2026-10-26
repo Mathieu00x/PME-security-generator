@@ -10,15 +10,16 @@ import toast from "react-hot-toast";
 
 const DOMAIN_RE = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/;
 
-export function ScanForm() {
+export function ScanForm({ initialDomain, autoSubmit }: { initialDomain?: string; autoSubmit?: boolean } = {}) {
   const router = useRouter();
   const { t } = useLanguage();
   const STAGES = [t("scan.stage1"), t("scan.stage2"), t("scan.stage3"), t("scan.stage4")];
-  const [domain, setDomain] = useState("");
+  const [domain, setDomain] = useState(initialDomain ?? "");
   const [scanning, setScanning] = useState(false);
   const [stage, setStage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoSubmittedRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -26,8 +27,21 @@ export function ScanForm() {
     };
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // Continuity from the public homepage scan -> signup flow: the domain
+  // arrives pre-filled via the URL, and this fires the real authenticated
+  // scan automatically so a brand-new user lands on a populated report
+  // instead of having to retype what they already typed once, anonymously,
+  // minutes earlier.
+  useEffect(() => {
+    if (autoSubmit && initialDomain && !autoSubmittedRef.current) {
+      autoSubmittedRef.current = true;
+      void handleSubmit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
     setError(null);
 
     const trimmed = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
