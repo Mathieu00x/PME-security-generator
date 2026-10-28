@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { HelpCircle, ExternalLink, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { HelpCircle, ExternalLink, Sparkles, CheckCircle2, RotateCcw } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -33,13 +33,28 @@ export function AssessmentClient({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [generatingActions, setGeneratingActions] = useState(false);
   const [expandedWhy, setExpandedWhy] = useState<Record<string, boolean>>({});
+  const [status, setStatus] = useState<"in_progress" | "completed">(initialAssessment.status);
+  const [completedAt, setCompletedAt] = useState<string | null>(initialAssessment.completed_at);
+  const [confirmStep, setConfirmStep] = useState<"complete" | "reopen" | null>(null);
+  const [completing, setCompleting] = useState(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const allQuestionIds = useMemo(
+    () => questions.sections.flatMap((s) => s.questions.map((q) => q.id)),
+    [questions]
+  );
+  const allAnswered = allQuestionIds.every((id) => !!answers[id]?.value);
+  const isCompleted = status === "completed";
 
   // Debounced autosave — no precedent for this in the codebase (every other
   // form is explicit-save-button), introduced here because a multi-section
   // questionnaire that silently drops progress on navigation would be worse
   // than the one new pattern this adds.
   useEffect(() => {
+    // A completed assessment is read-only until explicitly reopened (see
+    // handleReopen), so answers can't change while isCompleted is true — this
+    // guard is just a second line of defense against firing a stale autosave.
+    if (isCompleted) return;
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(async () => {
       setSaveState("saving");
@@ -59,17 +74,67 @@ export function AssessmentClient({
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answers]);
+  }, [answers, isCompleted]);
+
+  async function handleComplete() {
+    setCompleting(true);
+    try {
+      const res = await fetch(`/api/assessments/${initialAssessment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers, status: "completed" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        // Defense-in-depth path: the button is disabled client-side until
+        // allAnswered, so this should only fire if that check and the
+        // server's got out of sync somehow.
+        toast.error(t("assessment.completeError"));
+        return;
+      }
+      setStatus("completed");
+      setCompletedAt(data.assessment.completed_at);
+      setConfirmStep(null);
+      toast.success(t("assessment.completeSuccess"));
+    } catch {
+      toast.error(t("assessment.genericError"));
+    } finally {
+      setCompleting(false);
+    }
+  }
+
+  async function handleReopen() {
+    setCompleting(true);
+    try {
+      const res = await fetch(`/api/assessments/${initialAssessment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "in_progress" }),
+      });
+      if (!res.ok) throw new Error();
+      setStatus("in_progress");
+      setCompletedAt(null);
+      setConfirmStep(null);
+      toast.success(t("assessment.reopenSuccess"));
+    } catch {
+      toast.error(t("assessment.genericError"));
+    } finally {
+      setCompleting(false);
+    }
+  }
 
   function setAnswer(questionId: string, value: AnswerValue) {
+    if (isCompleted) return;
     setAnswers((prev) => ({ ...prev, [questionId]: { ...prev[questionId], value } }));
   }
 
   function setNotes(questionId: string, notes: string) {
+    if (isCompleted) return;
     setAnswers((prev) => ({ ...prev, [questionId]: { ...prev[questionId], value: prev[questionId]?.value ?? "no", notes } }));
   }
 
   function setEvidenceUrl(questionId: string, evidence_url: string) {
+    if (isCompleted) return;
     setAnswers((prev) => ({ ...prev, [questionId]: { ...prev[questionId], value: prev[questionId]?.value ?? "no", evidence_url } }));
   }
 
@@ -95,11 +160,54 @@ export function AssessmentClient({
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-bold text-gray-900">{lang === "fr" ? questions.name_fr : questions.name_en}</h1>
-        <span className="text-xs text-gray-400">
-          {saveState === "saving" ? t("assessment.saving") : saveState === "saved" ? t("assessment.saved") : ""}
-        </span>
+        {!isCompleted && (
+          <span className="text-xs text-gray-400">
+            {saveState === "saving" ? t("assessment.saving") : saveState === "saved" ? t("assessment.saved") : ""}
+          </span>
+        )}
       </div>
-      <p className="text-sm text-gray-500 mb-6">{lang === "fr" ? questions.description_fr : questions.description_en}</p>
+      <p className="text-sm text-gray-500 mb-4">{lang === "fr" ? questions.description_fr : questions.description_en}</p>
+
+      <div className="mb-6">
+        {isCompleted ? (
+          confirmStep === "reopen" ? (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+              <span>{t("assessment.reopenConfirmPrompt")}</span>
+              <div className="flex gap-2 ml-auto flex-shrink-0">
+                <Button size="sm" variant="outline" onClick={() => setConfirmStep(null)}>{t("assessment.cancel")}</Button>
+                <Button size="sm" onClick={handleReopen} loading={completing}>{t("assessment.confirm")}</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
+              <CheckCircle2 size={16} className="flex-shrink-0" />
+              <span>
+                {t("assessment.completedOn", {
+                  date: completedAt ? new Date(completedAt).toLocaleDateString(lang === "fr" ? "fr-CA" : "en-CA", { year: "numeric", month: "long", day: "numeric" }) : "",
+                })}
+              </span>
+              <Button size="sm" variant="outline" className="ml-auto flex-shrink-0" onClick={() => setConfirmStep("reopen")}>
+                <RotateCcw size={13} /> {t("assessment.reopenAssessment")}
+              </Button>
+            </div>
+          )
+        ) : confirmStep === "complete" ? (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800">
+            <span>{t("assessment.completeConfirmPrompt")}</span>
+            <div className="flex gap-2 ml-auto flex-shrink-0">
+              <Button size="sm" variant="outline" onClick={() => setConfirmStep(null)}>{t("assessment.cancel")}</Button>
+              <Button size="sm" onClick={handleComplete} loading={completing}>{t("assessment.confirm")}</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Button size="sm" variant="outline" disabled={!allAnswered} onClick={() => setConfirmStep("complete")}>
+              <CheckCircle2 size={13} /> {t("assessment.completeAssessment")}
+            </Button>
+            {!allAnswered && <span className="text-xs text-gray-400">{t("assessment.incompleteHint")}</span>}
+          </div>
+        )}
+      </div>
 
       <Card className="mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -189,15 +297,16 @@ export function AssessmentClient({
                       {options.map((opt) => (
                         <label
                           key={opt}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors ${
                             answer?.value === opt ? "border-blue-600 bg-blue-50 text-blue-700" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600"
-                          }`}
+                          } ${isCompleted ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
                         >
                           <input
                             type="radio"
                             name={q.id}
                             checked={answer?.value === opt}
                             onChange={() => setAnswer(q.id, opt)}
+                            disabled={isCompleted}
                             className="accent-blue-600"
                           />
                           {t(`assessment.answer.${opt}`)}
@@ -210,12 +319,14 @@ export function AssessmentClient({
                           placeholder={t("assessment.notes")}
                           value={answer.notes ?? ""}
                           onChange={(e) => setNotes(q.id, e.target.value)}
+                          disabled={isCompleted}
                           className="text-xs"
                         />
                         <Input
                           placeholder={t("assessment.evidenceUrl")}
                           value={answer.evidence_url ?? ""}
                           onChange={(e) => setEvidenceUrl(q.id, e.target.value)}
+                          disabled={isCompleted}
                           className="text-xs"
                         />
                       </div>

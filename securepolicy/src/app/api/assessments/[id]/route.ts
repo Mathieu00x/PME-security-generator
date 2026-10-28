@@ -24,6 +24,39 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!assessment) return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
 
   const body = (await req.json()) as PatchBody;
+  const questions = assessment.framework === "loi25" ? loi25Questions : pipedaQuestions;
+  const allQuestionIds = questions.sections.flatMap((s) => s.questions.map((q) => q.id));
+
+  // A completed assessment is locked: no answer change is accepted — not a
+  // plain autosave, and not one bundled with a reopen request in the same
+  // call — until it's explicitly reopened (status: "in_progress") on its
+  // own, with no answers in that same request. This is enforced here, not
+  // just by disabling inputs client-side, so a direct API call can't bypass
+  // it. Nothing is written for a rejected request.
+  if (assessment.status === "completed" && body.answers) {
+    return NextResponse.json(
+      { error: "This assessment is completed. Reopen it before changing answers." },
+      { status: 409 }
+    );
+  }
+
+  // Completion is validated BEFORE any write — atomic in the sense that a
+  // rejected attempt leaves answers/scores/status exactly as they were.
+  // Checked against a JS-side preview merge (existing answers + this
+  // request's answers), not yet persisted, so a request that both answers
+  // a question and asks to complete in the same call is evaluated fairly
+  // without writing anything if it's rejected. The actual persisted merge
+  // below still goes through the atomic DB-side RPC once this passes.
+  if (body.status === "completed") {
+    const previewAnswers = { ...assessment.answers, ...(body.answers ?? {}) };
+    const missingQuestionIds = allQuestionIds.filter((qid) => !previewAnswers?.[qid]?.value);
+    if (missingQuestionIds.length > 0) {
+      return NextResponse.json(
+        { error: "Cannot complete: some questions are unanswered", missingQuestionIds },
+        { status: 409 }
+      );
+    }
+  }
 
   // Merge happens atomically in Postgres (answers || new_answers in a single
   // UPDATE statement), not by reading assessment.answers here and writing it
@@ -45,7 +78,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     mergedAnswers = merged.answers;
   }
 
-  const questions = assessment.framework === "loi25" ? loi25Questions : pipedaQuestions;
   // Scores are always recomputed server-side from the merged answers — never
   // trust a client-submitted score. Computed from the just-merged snapshot, so
   // in the rare case of a concurrent overlapping save, this update's score
@@ -57,9 +89,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     scores,
     overall_score: overall,
   };
+
   if (body.status !== undefined) {
-    updates.status = body.status;
-    if (body.status === "completed") updates.completed_at = new Date().toISOString();
+    if (body.status === "completed") {
+      // The missing-answers case already returned above — reaching here
+      // means every question is answered.
+      updates.status = "completed";
+      updates.completed_at = new Date().toISOString();
+    } else {
+      // Reopening: answers and scores are untouched above, just the status
+      // (and the stale completed_at, which is no longer true) move back.
+      updates.status = body.status;
+      updates.completed_at = null;
+    }
   }
 
   const { data: updated, error } = await supabase
