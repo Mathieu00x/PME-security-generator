@@ -71,6 +71,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Real email sends are production-only, regardless of whether this route was
+  // reached via the Vercel Cron scheduler (which never fires on Preview anyway)
+  // or a manual invocation against a Preview/staging deployment.
+  if (process.env.VERCEL_ENV !== "production") {
+    return NextResponse.json({ skipped: true, reason: "non-production environment", vercelEnv: process.env.VERCEL_ENV ?? "unknown" });
+  }
+
   const supabase = createAdminClient();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.securepilot.ca";
 
