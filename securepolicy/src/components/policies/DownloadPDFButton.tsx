@@ -4,7 +4,8 @@ import { Download, Loader2 } from "lucide-react";
 import { Policy, Branding } from "@/types";
 import { COMPLIANCE_STANDARD_LABELS } from "@/lib/complianceLabels";
 import { ARTIFACT_DEFINITIONS } from "@/lib/artifacts";
-import { resolveBranding, hexToRgb } from "@/lib/branding";
+import { resolveBranding, hexToRgb, getBrandInitials } from "@/lib/branding";
+import { renderMarkdownContent } from "@/lib/pdf/markdownToPdf";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props {
@@ -19,7 +20,7 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
   const [loading, setLoading] = useState(false);
   const brand = branding || resolveBranding(null);
   const [brR, brG, brB] = hexToRgb(brand.color);
-  const brandInitials = brand.name.slice(0, 2).toUpperCase();
+  const brandInitials = getBrandInitials(brand.name);
   const brandNameShort = brand.name.length > 22 ? `${brand.name.slice(0, 21)}…` : brand.name;
 
   async function handleDownload() {
@@ -225,79 +226,24 @@ export function DownloadPDFButton({ policy, companyName = "Your Company", brandi
       drawHeader();
       y = contentTopY;
 
-      const lines = policy.content.split("\n");
-      let inList = false;
-
-      for (const rawLine of lines) {
-        const line = rawLine.trimEnd();
-
-        if (!line.trim()) {
-          if (inList) { inList = false; y += 2; }
-          else y += 3;
-          continue;
+      // Pure variant of checkPageBreak() above: takes/returns y explicitly
+      // instead of mutating the outer closure, since the markdown renderer
+      // needs to thread an updated y back out of nested helper calls
+      // (paragraph wrapping, table rows) rather than relying on a shared
+      // mutable variable.
+      const checkPageBreakY = (currentY: number, needed = 10): number => {
+        if (currentY + needed > pageH - 20) {
+          doc.addPage();
+          drawHeader();
+          return contentTopY;
         }
+        return currentY;
+      };
 
-        if (/^#{1}\s/.test(line) || /^\d+\s+[A-Z]/.test(line)) {
-          checkPageBreak(14);
-          y += 4;
-          doc.setFillColor(brR, brG, brB);
-          doc.rect(marginL, y - 4, 3, 9, "F");
-          doc.setFontSize(12);
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(15, 23, 42);
-          doc.text(line.replace(/^#+\s/, ""), marginL + 6, y + 2);
-          y += 10;
-          inList = false;
-          continue;
-        }
-
-        if (/^#{2}\s/.test(line) || /^\d+\.\d+\s/.test(line)) {
-          checkPageBreak(10);
-          y += 2;
-          doc.setFontSize(10);
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(brR, brG, brB);
-          doc.text(line.replace(/^#+\s/, ""), marginL, y);
-          y += 7;
-          inList = false;
-          continue;
-        }
-
-        if (/^#{3}\s/.test(line)) {
-          checkPageBreak(8);
-          doc.setFontSize(9);
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(51, 65, 85);
-          doc.text(line.replace(/^#+\s/, ""), marginL, y);
-          y += 6;
-          inList = false;
-          continue;
-        }
-
-        if (/^[•\-\*]\s/.test(line)) {
-          checkPageBreak(6);
-          doc.setFontSize(9);
-          doc.setFont("helvetica", "normal");
-          doc.setTextColor(51, 65, 85);
-          const bulletText = line.replace(/^[•\-\*]\s/, "");
-          const wrapped = doc.splitTextToSize(bulletText, contentW - 8);
-          doc.setFillColor(brR, brG, brB);
-          doc.circle(marginL + 2, y - 1.5, 1, "F");
-          doc.text(wrapped, marginL + 6, y);
-          y += wrapped.length * 5 + 1;
-          inList = true;
-          continue;
-        }
-
-        checkPageBreak(6);
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(51, 65, 85);
-        const wrapped = doc.splitTextToSize(line, contentW);
-        doc.text(wrapped, marginL, y);
-        y += wrapped.length * 5 + 2;
-        inList = false;
-      }
+      y = renderMarkdownContent(doc, policy.content, marginL, y, contentW, {
+        brandColor: [brR, brG, brB],
+        checkPageBreakY,
+      });
 
       // ── Compliance Mapping page ───────────────────────────────────────
       const fullMapping = policy.security_score?.complianceMapping;

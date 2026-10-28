@@ -14,6 +14,7 @@ Avoid unnecessary technical jargon.
 Never invent technologies that the company does not use.
 Every recommendation must be practical for a small or medium business.
 The document must be structured using numbered headings and subheadings.
+Never use placeholder brackets such as [Date], [Company Name], [Insert X], or [TBD] — the effective date, review date, and company name are already inserted automatically outside this document. If a specific date or value is not known to you, omit that line entirely rather than leaving a placeholder for the reader to fill in.
 Output only the document content.`;
 
 export const STYLE_PROMPT = `Write like a Big Four cybersecurity consultant.
@@ -23,6 +24,16 @@ Avoid repeating ideas.
 Use numbered headings.
 Use bullet lists when appropriate.
 Use professional business language.`;
+
+// Detects likely unresolved template placeholders (e.g. "[Date]",
+// "[Company Name]", "[Insert X]") in generated content, for logging only —
+// not every bracketed span is a placeholder (short numeric footnotes like
+// "[1]" are common and legitimate), so this never rewrites the content, it
+// only flags candidates for a human to check.
+export function detectUnresolvedPlaceholders(text: string): string[] {
+  const matches = text.match(/\[(?=[^\]\n]*[A-Za-z])[^\]\n]{1,40}\]/g) || [];
+  return Array.from(new Set(matches));
+}
 
 export function buildCompanyContext(profile: CompanyProfile): string {
   return `Company Information

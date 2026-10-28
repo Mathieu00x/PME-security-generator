@@ -8,6 +8,7 @@ import {
   buildQuestionnaireContext,
   POLICY_TEMPLATES,
   JSON_OUTPUT_PROMPT,
+  detectUnresolvedPlaceholders,
 } from "@/lib/prompts";
 import { ArtifactType, AttackSurfaceReport, PolicyType } from "@/types";
 import { getEntitlements } from "@/lib/entitlements";
@@ -179,6 +180,14 @@ Génère une politique qui adresse directement ces vulnérabilités détectées.
     const jsonSplit = rawContent.split("---JSON---");
     const documentContent = jsonSplit[0].trim();
     let securityScore = null;
+
+    const unresolvedPlaceholders = detectUnresolvedPlaceholders(documentContent);
+    if (unresolvedPlaceholders.length) {
+      // Logged, not blocked or auto-replaced — some bracketed text is
+      // legitimate (e.g. footnote markers), and this policy still ships
+      // today without an Anthropic retry budget to regenerate on detection.
+      console.warn(`Policy generation produced likely unresolved placeholders: ${unresolvedPlaceholders.join(", ")}`);
+    }
 
     if (jsonSplit[1]) {
       try {

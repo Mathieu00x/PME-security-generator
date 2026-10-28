@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/Card";
-import { CompanyProfile, Policy, PolicyVersion } from "@/types";
+import { Client, CompanyProfile, Policy, PolicyVersion } from "@/types";
 import { getEntitlements } from "@/lib/entitlements";
 import { resolveBranding } from "@/lib/branding";
 import { DownloadPDFButton } from "@/components/policies/DownloadPDFButton";
@@ -36,15 +36,25 @@ export default async function PolicyDetailPage({
 
   const p = policy as Policy;
 
-  const [{ data: profile }, { data: accountSettings }, entitlements] = await Promise.all([
+  const [{ data: profile }, { data: client }, { data: accountSettings }, entitlements] = await Promise.all([
     p.client_id
       ? supabase.from("company_profiles").select("company_name").eq("client_id", p.client_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    // Scoped by both id and user_id (defense in depth) even though p.client_id
+    // already comes from a policy row verified to belong to this user above.
+    p.client_id
+      ? supabase.from("clients").select("name").eq("id", p.client_id).eq("user_id", user!.id).maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.from("account_settings").select("*").eq("user_id", user!.id).maybeSingle(),
     getEntitlements(supabase, user!.id),
   ]);
 
-  const companyName = (profile as Pick<CompanyProfile, "company_name"> | null)?.company_name ?? "Your Company";
+  // Priority: a filled-in company profile, then the client's own name
+  // (always available), then a generic fallback only if neither exists.
+  const companyName =
+    (profile as Pick<CompanyProfile, "company_name"> | null)?.company_name?.trim() ||
+    (client as Pick<Client, "name"> | null)?.name?.trim() ||
+    "Your Company";
   const branding = resolveBranding(accountSettings, entitlements.hasFeature("branding"));
 
   const { data: versions } = await supabase

@@ -20,6 +20,27 @@ export function resolveBranding(
   };
 }
 
+// Two-letter monogram for the cover/header badge. Naively slicing the first
+// two characters breaks on single-word compound names like "SecurePilot"
+// ("Se" instead of "SP") — real initials need either two separate words, or
+// the internal capital-letter boundary of a compound word.
+export function getBrandInitials(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed === DEFAULT_NAME) return "SP";
+
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+
+  const compoundMatch = trimmed.match(/^([A-Z][a-z]*)([A-Z])/);
+  if (compoundMatch) {
+    return (compoundMatch[1][0] + compoundMatch[2]).toUpperCase();
+  }
+
+  return trimmed.slice(0, 2).toUpperCase();
+}
+
 export function hexToRgb(hex: string): [number, number, number] {
   const clean = hex.replace("#", "");
   const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
