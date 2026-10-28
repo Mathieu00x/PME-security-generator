@@ -16,6 +16,7 @@ export type MarkdownBlock =
   | { type: "paragraph"; text: string }
   | { type: "listItem"; text: string }
   | { type: "table"; headers: string[]; rows: string[][] }
+  | { type: "hr" }
   | { type: "blank" };
 
 interface InlineSegment {
@@ -27,6 +28,14 @@ interface InlineSegment {
 
 const isTableRow = (line: string) => /^\s*\|.*\|\s*$/.test(line);
 const isTableSeparator = (line: string) => /^\s*\|?[\s:-]+\|[\s:|-]*$/.test(line) && line.includes("-");
+
+// A horizontal rule is a line made up ENTIRELY of 3+ of the same -, *, or _
+// character (optionally padded with whitespace) — never mixed with other
+// text, so a sentence that happens to contain "---" or legitimate hyphens
+// never matches this. Table separator rows always contain "|" and are
+// already consumed by the table branch above before this check runs, so
+// the two can't be confused with each other.
+const isHorizontalRule = (line: string) => /^(-{3,}|\*{3,}|_{3,})$/.test(line.trim());
 
 function splitTableRow(line: string): string[] {
   const trimmed = line.trim().replace(/^\|/, "").replace(/\|$/, "");
@@ -56,6 +65,12 @@ export function parseMarkdownBlocks(content: string): MarkdownBlock[] {
         i++;
       }
       blocks.push({ type: "table", headers, rows });
+      continue;
+    }
+
+    if (isHorizontalRule(line)) {
+      blocks.push({ type: "hr" });
+      i++;
       continue;
     }
 
@@ -264,6 +279,17 @@ export function renderMarkdownContent(
   for (const block of blocks) {
     if (block.type === "blank") {
       curY += prevWasListItem ? 2 : 3;
+      prevWasListItem = false;
+      continue;
+    }
+
+    if (block.type === "hr") {
+      curY = opts.checkPageBreakY(curY, 6);
+      curY += 2;
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.line(x, curY, x + maxWidth, curY);
+      curY += 4;
       prevWasListItem = false;
       continue;
     }
